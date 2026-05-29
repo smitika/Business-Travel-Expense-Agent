@@ -23,6 +23,10 @@ SHARED_DATA_DIR = Path("Rag_Agent/data/shared")
 class QueryRequest(BaseModel):
     question: str
 
+@app.get("/")
+def root():
+    return {"status": "Business Travel Expense Agent API is running"}
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     os.makedirs(SHARED_DATA_DIR, exist_ok=True)

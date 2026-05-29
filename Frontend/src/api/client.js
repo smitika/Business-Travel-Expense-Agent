@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = "http://localhost:8000";
+const API = "https://business-travel-expense-agent.onrender.com";
 
 export const uploadFile = async (file) => {
   const formData = new FormData();

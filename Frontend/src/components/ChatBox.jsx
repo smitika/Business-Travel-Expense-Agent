@@ -16,7 +16,7 @@ export default function ChatBox({ ready }) {
 
     try {
       const res = await askQuestion(question);
-      setMessages((prev) => [...prev, { role: "bot", text: res.answer }]);
+      setMessages((prev) => [...prev, { role: "bot", text: res.response }]);
     } catch (e) {
       setMessages((prev) => [...prev, { role: "bot", text: "Error getting response." }]);
     }
@@ -37,7 +37,7 @@ export default function ChatBox({ ready }) {
         <div className="h-full flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-2xl font-semibold text-white">
-              Upload a document to begin
+              travel policy being ingested...
             </h2>
 
             <p className="text-gray-400 mt-2">
@@ -84,7 +84,7 @@ export default function ChatBox({ ready }) {
           onKeyDown={handleKeyDown}
           placeholder={
             ready
-              ? "Ask questions about your document..."
+              ? "Ask questions about your business travel ..."
               : "Upload a document first..."
           }
           disabled={!ready}

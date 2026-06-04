@@ -1,7 +1,8 @@
 import axios from "axios";
 
-const API = "https://business-travel-expense-agent.onrender.com";
+const API = "http://localhost:8000";
 
+//receipt upload
 export const uploadFile = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -14,6 +15,6 @@ export const uploadFile = async (file) => {
 };
 
 export const askQuestion = async (question) => {
-  const res = await axios.post(`${API}/query`, { question });
+  const res = await axios.post(`${API}/query`, { message: question });
   return res.data;
 };

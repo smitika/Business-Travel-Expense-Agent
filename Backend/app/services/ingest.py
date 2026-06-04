@@ -1,11 +1,14 @@
-from dotenv import load_dotenv
-import os
-load_dotenv()
-
 from langchain_openai import AzureOpenAIEmbeddings
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
+from app.core.config import (
+    AZURE_OPENAI_ENDPOINT,
+    AZURE_OPENAI_API_KEY,
+    AZURE_OPENAI_API_VERSION,
+    AZURE_OPENAI_EMBEDDING_DEPLOYMENT
+)
+import os
 def ingest_file(file_path: str, index_dir: str) -> str:
     os.makedirs(index_dir, exist_ok=True)
 
@@ -16,10 +19,11 @@ def ingest_file(file_path: str, index_dir: str) -> str:
     chunks = splitter.split_documents(docs)
 
     embeddings = AzureOpenAIEmbeddings(
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-    api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
-    azure_deployment=os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT"))
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        api_key=AZURE_OPENAI_API_KEY,
+        api_version=AZURE_OPENAI_API_VERSION,
+        azure_deployment=AZURE_OPENAI_EMBEDDING_DEPLOYMENT
+    )
 
     index_file = os.path.join(index_dir, "index.faiss")
     if os.path.exists(index_file):

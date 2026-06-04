@@ -1,0 +1,618 @@
+[
+    {
+        "question": "When is business class allowed for flights?",
+        "answer": "Business class is only allowed if special approval is provided by senior management.",
+        "ground_truth": "Business class allowed only with senior management approval",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and concise!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 0,
+            "reason": "The score is 0.00 because all the top-ranked nodes in the retrieval contexts are irrelevant to the input question. Each node, such as the first node which 'does not mention business class or its approval requirements for flights', should be ranked lower than any relevant node that directly addresses when business class is allowed for flights. Since no relevant nodes are present, the contextual precision is at its lowest."
+        },
+        "context_recall": {
+            "score": 0.0,
+            "reason": "The score is 0.00 because none of the nodes in the retrieval context mention business class or senior management approval, so the expected output cannot be attributed to any node."
+        },
+        "context_relevancy": {
+            "score": 0.46153846153846156,
+            "reason": "The score is 0.46 because while the context mentions 'Business purposes including: Domestic business travel within India, International business travel, Client meetings, Conferences and seminars, Project-related travel, Training programs, Internal company meetings requiring travel', it does not specifically address when business class is allowed for flights, and most statements are about approval, reimbursement, or general travel policy rather than business class eligibility."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "How do I take approval for business class?",
+        "answer": "Submit your justification to your reporting manager or authorized department.",
+        "ground_truth": "All business travel must receive prior approval from reporting manager or authorized department",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and concise!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each stating: 'All business travel must receive prior approval from the reporting manager or authorized department,' which perfectly matches the input question. Great job—no irrelevant nodes ranked above relevant ones!"
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every sentence in the expected output is fully supported by all nodes in the retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.6538461538461539,
+            "reason": "The score is 0.65 because while the context provides relevant statements such as 'All business travel must receive prior approval from the reporting manager or authorized department,' it also contains many irrelevant section headings and exclusions like 'Personal travel expenses are not covered under this policy,' which do not help with the approval process for business class."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "can I book a hotel myself and later claim reimbursement for it?",
+        "answer": "No, hotel accommodation for official travel is generally arranged and prepaid by the company. You should not book a hotel yourself or claim reimbursement for it unless you have special approval.",
+        "ground_truth": "Hotel accommodation for official travel is generally arranged and prepaid by the company",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and concise!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 0,
+            "reason": "The score is 0.00 because all the top-ranked nodes in the retrieval contexts are irrelevant—they only discuss 'expenses not eligible for reimbursement', 'submission guidelines', and 'ineligible expenses', but none address hotel booking or company policy on hotel accommodation. Since no relevant nodes are present, the score cannot be higher."
+        },
+        "context_recall": {
+            "score": 0.0,
+            "reason": "The score is 0.00 because none of the nodes in the retrieval context provide information related to hotel accommodation, official travel, or company prepayment as described in the expected output."
+        },
+        "context_relevancy": {
+            "score": 0.8,
+            "reason": "The score is 0.80 because, while some context statements are irrelevant due to being incomplete and not addressing hotel booking reimbursement directly (e.g., 'The statement is incomplete and does not provide any relevant information regarding hotel booking or reimbursement.'), several relevant statements do provide useful information about reimbursement claims, such as required documentation and submission timelines (e.g., 'Employees must submit reimbursement claims within 7 calendar days after completion of travel.' and 'Each claim must include: Expense category, Expense amount, Date of transaction, Merchant or vendor details, Valid receipt, invoice, or approved payment proof')."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "What expenses are NOT reimbursable under the travel policy?",
+        "answer": "The following expenses are NOT reimbursable under the travel policy: Alcohol purchases, Personal shopping, Entertainment expenses, Tourist activities, Family expenses, Personal subscriptions, Personal gifts, Traffic fines, Luxury purchases, Expenses unrelated to official company work, Expenses already prepaid by the company (e.g., visa, insurance)",
+        "ground_truth": "Alcohol, personal expenses, entertainment, tourist activities, family expenses, subscriptions, gifts, fines, luxury purchases, non-business expenses, and prepaid expenses are not reimbursable",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly with no irrelevant information. Great job staying focused and concise!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each providing a detailed list of expenses not eligible for reimbursement, such as 'Alcohol purchases', 'Personal shopping', and 'Entertainment expenses', which perfectly matches the input question. No irrelevant nodes are ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every item in the expected output is directly supported by the first node in the retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.23529411764705882,
+            "reason": "The score is 0.24 because although most of the context is irrelevant (e.g., 'about claim documentation, not about non-reimbursable expenses'), there are several statements directly listing non-reimbursable expenses ('The following expenses are not eligible for reimbursement: Alcohol purchases, Personal shopping, ...'), which are highly relevant to the input."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Is gym or fitness reimbursement covered under the travel policy?",
+        "answer": "Gym or fitness expenses are not eligible for reimbursement, as the policy excludes luxury purchases and expenses unrelated to official company work.",
+        "ground_truth": "Expenses unrelated to official company work and luxury purchases are not reimbursable; gym or fitness expenses fall under these categories and are therefore not reimbursable.",
+        "answer_relevancy": {
+            "score": 0.5,
+            "reason": "The score is 0.50 because the answer included information about unrelated expenses, which only indirectly relates to the question about gym or fitness reimbursement under the travel policy. It doesn't directly answer the question, but provides some potentially relevant context."
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 0,
+            "reason": "The score is 0.00 because all the top-ranked nodes in the retrieval contexts are irrelevant to the input. Each node only discusses topics like 'visa, insurance, employee responsibilities, and meal expenses' (node 1), and none mention gym or fitness reimbursement. Since no relevant nodes are present, irrelevant nodes are not ranked below any relevant ones, resulting in the lowest possible score."
+        },
+        "context_recall": {
+            "score": 0.0,
+            "reason": "The score is 0.00 because none of the sentences in the expected output can be attributed to any node(s) in the retrieval context; the context does not mention non-reimbursable expenses, luxury purchases, or gym/fitness expenses."
+        },
+        "context_relevancy": {
+            "score": 0.0,
+            "reason": "The score is 0.00 because none of the statements in the retrieval context mention or address gym or fitness reimbursement, as shown by repeated reasons such as 'is about visa expenses, not gym or fitness reimbursement' and 'is about meal reimbursement, not gym or fitness reimbursement.'"
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "If my flight duration is 5.5 hours, can I book business class?",
+        "answer": "No, you must book Economy Class for a 5.5-hour flight unless you receive special approval from senior management. Independent upgrades to Business Class are not permitted without such approval.",
+        "ground_truth": "All business travel must receive prior approval from the reporting manager or authorized department, and employees should select economical options. Therefore, Economy Class must be booked unless special approval for Business Class is granted.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused on the user's query!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each stating 'Employees must travel using Economy Class unless special approval is provided by senior management,' which is exactly what is needed for the input. No irrelevant nodes are ranked above relevant ones—great job!"
+        },
+        "context_recall": {
+            "score": 0.5,
+            "reason": "The score is 0.50 because only the sentence about Economy Class booking (sentence 2) is supported by node 1 in the retrieval context, while the requirements for prior approval and selecting economical options (sentence 1) are not addressed by any node in the retrieval context."
+        },
+        "context_relevancy": {
+            "score": 0.3333333333333333,
+            "reason": "The score is 0.33 because most statements in the retrieval context are about hotel accommodation, visa expenses, and travel insurance, which are irrelevant to booking business class for a flight. Only a few statements, such as 'Employees must travel using Economy Class unless special approval is provided by senior management,' are directly relevant to the input question."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Do managers get higher travel or expense allowances compared to other employees?",
+        "answer": "The document does not contain this information.",
+        "ground_truth": "The policy does not specify any difference in travel or expense allowances based on employee role or hierarchy.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused on the topic!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are relevant, each clearly stating that there is no distinction in travel or expense allowances based on employee role or hierarchy. No irrelevant nodes are ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the sentence in the expected output is fully supported by the information in the node(s) in retrieval context, which clearly state there is no differentiation in allowances based on role or hierarchy. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.9166666666666666,
+            "reason": "The score is 0.92 because while the context does not explicitly compare managers' allowances to other employees, it provides relevant details such as 'Employees must travel using Economy Class unless special approval is provided by senior management,' which implies that higher allowances may be possible for managers with approval. However, the lack of direct comparison keeps the score just below perfect."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "What is the maximum meal reimbursement allowed per day?",
+        "answer": "The maximum meal reimbursement allowed per day for domestic travel is â‚¹2500. Valid food receipts are mandatory for reimbursement; claims without receipts may be rejected.",
+        "ground_truth": "Daily domestic meal reimbursement limit is â‚¹2500 per day. Valid food receipts are mandatory, and claims without receipts may be rejected.",
+        "answer_relevancy": {
+            "score": 0.5,
+            "reason": "The score is 0.50 because the answer included information about the consequences of not providing receipts, which is irrelevant to the question about the maximum meal reimbursement per day. However, it still partially addressed the topic, so it is not lower."
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each stating 'Daily domestic meal reimbursement limit: Maximum allowed: ₹2500 per day' and emphasizing the need for valid food receipts. No irrelevant nodes are ranked above relevant ones—great job!"
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every sentence in the expected output is fully supported by the information in all relevant nodes in the retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.2222222222222222,
+            "reason": "The score is 0.22 because, despite most of the retrieval context being about receipts and transportation (e.g., 'This statement is about transportation expenses, not meal reimbursement.'), there are a few directly relevant statements such as 'Daily domestic meal reimbursement limit: Maximum allowed: ₹2500 per day' that answer the input question."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Are taxi or cab expenses reimbursable during official travel?",
+        "answer": "Yes, taxi or cab expenses are reimbursable during official travel, provided valid receipts or invoices are submitted. Daily reimbursement limits apply: â‚¹1000 per day for domestic travel and â‚¹2000 per day for international travel.",
+        "ground_truth": "Taxi and other transportation services such as Uber, Ola, metro, and bus are reimbursable during official travel. The daily reimbursement limit is â‚¹1000 per day for domestic travel and â‚¹2000 per day for international travel, with valid receipts required.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and clear!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 0,
+            "reason": "The score is 0.00 because all the top-ranked nodes in the retrieval contexts are irrelevant—they only discuss non-reimbursable expenses and claim submission guidelines, but none mention taxi or cab expenses or their reimbursement. For example, the first node states, 'does not mention taxi, cab, or other transportation services as reimbursable,' and similar issues are present in the second, third, and fourth nodes. Since no relevant nodes are present or ranked higher than irrelevant ones, the score cannot be higher."
+        },
+        "context_recall": {
+            "score": 0.0,
+            "reason": "The score is 0.00 because none of the sentences in the expected output can be attributed to any node(s) in the retrieval context; the nodes do not mention reimbursable transportation services or reimbursement limits."
+        },
+        "context_relevancy": {
+            "score": 0.2,
+            "reason": "The score is 0.20 because most of the context discusses claim submission timing and documentation requirements, which are not relevant to whether taxi or cab expenses are reimbursable. Only the statements listing ineligible expenses are somewhat relevant, but they do not specifically mention taxi or cab expenses, leaving the main question largely unanswered."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Can I claim reimbursement for expenses if I don't have valid receipts?",
+        "answer": "For miscellaneous business expenses, if valid receipts are unavailable, you may submit digital payment proof, but such claims may be flagged for finance review. For other expense categories, valid receipts, invoices, or approved payment proof are mandatory for reimbursement.",
+        "ground_truth": "If receipts are unavailable, valid UPI or payment proof may be submitted, but such claims may be flagged for manual finance review.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and clear!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each stating that a 'Valid receipt, invoice, or approved payment proof' is required and that claims without proper documentation may be 'flagged for manual review.' No irrelevant nodes are ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every part of the expected output is clearly supported by the information in the node(s) in retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.4,
+            "reason": "The score is 0.40 because while some statements like 'Each claim must include...Valid receipt, invoice, or approved payment proof' and 'Claims containing incomplete, invalid, or unreadable documents may be rejected or flagged for manual review' are relevant to the input about claiming reimbursement without valid receipts, most of the context is irrelevant, focusing on ineligible expenses and submission deadlines instead of receipt requirements."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Can I upgrade my hotel room to a luxury option and claim reimbursement?",
+        "answer": "No, you cannot upgrade your hotel room to a luxury option and claim reimbursement. The policy clearly states that luxury accommodation and personal room upgrades are not permitted.",
+        "ground_truth": "Hotel accommodation is generally arranged and prepaid by the company, employees should select standard business accommodation, and luxury accommodation and personal room upgrades are not permitted.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and clear!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each clearly stating that 'Luxury purchases' are not eligible for reimbursement. There are no irrelevant nodes ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 0.0,
+            "reason": "The score is 0.00 because none of the sentences in the expected output are supported by any node(s) in the retrieval context."
+        },
+        "context_relevancy": {
+            "score": 0.25,
+            "reason": "The score is 0.25 because most of the retrieval context is irrelevant, focusing on claim timing and documentation rather than eligibility, but the statement 'The following expenses are not eligible for reimbursement: ... Luxury purchases ...' is directly relevant to the input about luxury hotel room upgrades."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "The policy allows first class travel for senior employees, right?",
+        "answer": "No, the policy does not allow first class travel for senior employees. All employees must travel in Economy Class unless special approval is provided by senior management; luxury or non-standard upgrades are not permitted without such approval.",
+        "ground_truth": "Employees must travel using Economy Class unless special approval is provided by senior management. Employees are not permitted to independently upgrade flight classes without approval.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are relevant, each providing the key policy statement: 'Employees must travel using Economy Class unless special approval is provided by senior management' and 'Employees are not permitted to independently upgrade flight classes without approval.' No irrelevant nodes are ranked above relevant ones—great job!"
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because both sentences in the expected output are directly supported by the information in the node(s) in retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.3333333333333333,
+            "reason": "The score is 0.33 because most statements in the retrieval context are about hotel accommodation, visa expenses, and insurance, which are not relevant to flight class policy ('is about hotel bookings, not flight class policy'), but a few statements directly address flight class ('Employees must travel using Economy Class unless special approval is provided by senior management'), making the context only partially relevant."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Do employees get reimbursement for personal shopping during travel?",
+        "answer": "No, employees are not eligible for reimbursement for personal shopping during travel. The policy specifically lists personal shopping as a non-reimbursable expense.",
+        "ground_truth": "Personal shopping and other listed expenses such as alcohol, entertainment, tourist activities, family expenses, subscriptions, gifts, fines, and luxury purchases are not reimbursable.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and concise!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all top-ranked nodes in the retrieval contexts directly address the question by stating that 'Personal shopping' is 'not eligible for reimbursement.' There are no irrelevant nodes ranked above relevant ones, making the ranking perfect!"
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every part of the expected output is fully supported by all nodes in the retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.2222222222222222,
+            "reason": "The score is 0.22 because, although most of the context is irrelevant (e.g., 'about the timing of claim submission, not about reimbursement for personal shopping'), there are a few statements directly addressing the input, such as 'Personal shopping... are not eligible for reimbursement.'"
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Is travel insurance reimbursement unlimited?",
+        "answer": "The document does not contain this information.",
+        "ground_truth": "The policy does not mention travel insurance reimbursement or any limits related to it.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer addressed the question directly and did not include any irrelevant information. Great job staying focused and relevant!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 0,
+            "reason": "The score is 0.00 because all the top-ranked nodes in the retrieval contexts are irrelevant to the input question. For example, the first node only discusses 'expenses not eligible for reimbursement and submission guidelines, but does not mention travel insurance reimbursement or any limits related to it.' Similarly, the second, third, and fourth nodes also fail to address travel insurance reimbursement or its limits, focusing instead on ineligible expenses and claim requirements. Since none of the nodes are relevant, the contextual precision score is at its lowest."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every part of the expected output is fully supported by all nodes in the retrieval context, which consistently omit any mention of travel insurance reimbursement or related limits. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.0,
+            "reason": "The score is 0.00 because none of the statements in the retrieval context address whether travel insurance reimbursement is unlimited, as shown by repeated notes such as 'does not address whether travel insurance reimbursement is unlimited.'"
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Since meals are reimbursed, snacks and beverages are also unlimited, correct?",
+        "answer": "Snacks and beverages are not specifically mentioned as reimbursable meal expenses. Only breakfast, lunch, dinner, and official client meals are allowed. Claims for snacks or beverages may not be reimbursed unless they are part of an official meal and within the daily meal limit.",
+        "ground_truth": "Meal reimbursement applies to defined categories such as breakfast, lunch, and dinner within a daily limit. Snacks and beverages are not explicitly covered separately in the policy.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer addressed the input directly and did not include any irrelevant statements. Great job staying focused and relevant!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each providing clear information about meal reimbursement categories and limits, and none of the nodes are irrelevant. Great job—relevant information is perfectly prioritized!"
+        },
+        "context_recall": {
+            "score": 0.5,
+            "reason": "The score is 0.50 because only the first sentence of the expected output is supported by node 1 in the retrieval context, while the second sentence about snacks and beverages is not addressed by any node in the retrieval context."
+        },
+        "context_relevancy": {
+            "score": 0.42857142857142855,
+            "reason": "The score is 0.43 because while there are several relevant statements about meal reimbursement limits and requirements (e.g., 'Allowed meal expenses include: Breakfast, Lunch, Dinner, Official client meals'), the majority of the retrieval context is about transportation expenses, which is irrelevant to the input question about snacks and beverages."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Managers don't need approval for business class bookings, right?",
+        "answer": "No, managers also require special approval from senior management for business class bookings. All employees must travel in Economy Class unless special approval is provided.",
+        "ground_truth": "All employees must travel in Economy Class unless special approval is provided by senior management. Employees are not permitted to independently upgrade without approval.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and concise!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are highly relevant, each stating that 'Employees must travel using Economy Class unless special approval is provided by senior management' and 'Employees are not permitted to independently upgrade flight classes without approval.' There are no irrelevant nodes ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because both sentences in the expected output are fully supported by the 1st node in the retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.3333333333333333,
+            "reason": "The score is 0.33 because, while there are several relevant statements such as 'Employees must travel using Economy Class unless special approval is provided by senior management,' most of the retrieval context is about hotel accommodation, visa expenses, and travel insurance, which are not related to business class flight approvals."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Most companies allow flexible travel upgrades, does your policy also allow that?",
+        "answer": "Our policy does not allow flexible travel upgrades. Employees must travel in Economy Class unless special approval is provided by senior management, and independent upgrades are not permitted without approval.",
+        "ground_truth": "Employees must travel in Economy Class unless special approval is provided by senior management. Employees are not permitted to independently upgrade flight classes without approval.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and concise!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are highly relevant, each clearly stating 'Employees must travel using Economy Class unless special approval is provided by senior management' and 'Employees are not permitted to independently upgrade flight classes without approval.' No irrelevant nodes are ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because both sentences in the expected output are fully supported by the 1st node in the retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.3333333333333333,
+            "reason": "The score is 0.33 because while most statements are irrelevant (e.g., 'Hotel accommodation for official travel is generally arranged and prepaid by the company.'), there are some relevant statements such as 'Employees are not permitted to independently upgrade flight classes without approval.' which directly address travel upgrades."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Hotel upgrades are allowed if I pay the difference, correct?",
+        "answer": "No, hotel upgradesâ€”including personal room upgrades or luxury accommodationâ€”are not permitted, even if you pay the difference yourself. Employees must select standard business accommodation as per policy.",
+        "ground_truth": "Hotel accommodation is generally arranged and prepaid by the company. Employees should select standard business accommodation, and luxury accommodation and personal room upgrades are not permitted.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and clear!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each stating that 'Luxury accommodation and personal room upgrades are not permitted,' which perfectly matches the input question. No irrelevant nodes are ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every sentence in the expected output is fully supported by the 1st node in the retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.3333333333333333,
+            "reason": "The score is 0.33 because while there are some relevant statements like 'Luxury accommodation and personal room upgrades are not permitted,' most of the retrieval context discusses unrelated topics such as flight bookings, visa expenses, and travel insurance, which do not address hotel upgrades."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "If I don't submit receipts, can I still get full reimbursement?",
+        "answer": "No, you cannot get full reimbursement without submitting valid receipts, invoices, or approved payment proof. Claims without valid proof will be rejected or flagged for review according to the policy.",
+        "ground_truth": "Valid receipts are required for reimbursement. If receipts are unavailable, payment proof may be submitted, but such claims may be flagged for manual finance review.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused and clear!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each clearly stating that a 'Valid receipt, invoice, or approved payment proof' is required and mentioning the consequences for incomplete documentation. There are no irrelevant nodes ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every sentence in the expected output is fully supported by the information in the node(s) in retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.4,
+            "reason": "The score is 0.40 because while some statements are relevant—such as 'Each claim must include: ... Valid receipt, invoice, or approved payment proof' and 'Claims containing incomplete, invalid, or unreadable documents may be rejected or flagged for manual review'—the majority of the context is about ineligible expenses or submission deadlines, which do not address the question about receipts and reimbursement."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "All personal expenses during official travel are reimbursable, right?",
+        "answer": "No, personal expenses during official travel are not reimbursable. The policy specifically excludes personal shopping, entertainment, tourist activities, family expenses, personal subscriptions, personal gifts, and other expenses unrelated to official company work.",
+        "ground_truth": "Personal expenses such as personal shopping, entertainment, tourist activities, family expenses, subscriptions, gifts, and other expenses unrelated to official company work are not reimbursable.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the input directly without any irrelevant statements. Great job staying focused and clear!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each clearly stating that personal expenses such as 'Personal shopping', 'Entertainment expenses', and others are not reimbursable. There are no irrelevant nodes ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every part of the expected output is fully supported by all nodes in the retrieval context, which clearly list the same non-reimbursable personal expenses."
+        },
+        "context_relevancy": {
+            "score": 0.23529411764705882,
+            "reason": "The score is 0.24 because while most of the context discusses claim submission timing and documentation, the relevant statement clearly lists personal expenses that are not eligible for reimbursement: 'Alcohol purchases, Personal shopping, Entertainment expenses, Tourist activities, Family expenses, Personal subscriptions, Personal gifts, Traffic fines, Luxury purchases, Expenses unrelated to official company work.' This directly addresses the input question, but the majority of the context is not relevant."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "Does the policy include reimbursement for fitness memberships or spa services?",
+        "answer": "Fitness memberships and spa services are not eligible for reimbursement, as the policy excludes luxury purchases and expenses unrelated to official company work.",
+        "ground_truth": "Expenses unrelated to official company work and luxury purchases are not reimbursable.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because the answer was fully relevant and addressed the question directly without any irrelevant information. Great job staying focused on the user's query!"
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are directly relevant, each stating that 'Luxury purchases' and 'Expenses unrelated to official company work' are not eligible for reimbursement. There are no irrelevant nodes ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every part of the expected output is fully supported by all nodes in the retrieval context. Great job!"
+        },
+        "context_relevancy": {
+            "score": 0.2,
+            "reason": "The score is 0.20 because while most of the context is about claim timing and documentation (e.g., 'about the timing of claim submission, not about what expenses are eligible for reimbursement'), there is some relevance since the statements list ineligible expenses like 'Personal subscriptions' and 'Entertainment expenses', which could relate to fitness memberships or spa services."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    },
+    {
+        "question": "I lost my company credit card during international travel. Can I use cash and still get reimbursement?",
+        "answer": "Yes, if you lost your company credit card during international travel, you may use personal funds (including cash) and submit reimbursement claims, provided you include valid supporting proof (such as receipts). These claims may be reviewed by finance.",
+        "ground_truth": "In exceptional situations such as loss, damage, or temporary failure of corporate cards, employees may use personal funds and submit reimbursement claims with valid supporting proof.",
+        "answer_relevancy": {
+            "score": 1.0,
+            "reason": "Great job! The answer is fully relevant and directly addresses the question about using cash for reimbursement after losing a company credit card. No irrelevant statements were present."
+        },
+        "faithfulness": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because there are no contradictions—great job staying true to the retrieval context!"
+        },
+        "context_precision": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because all the top-ranked nodes in the retrieval contexts are highly relevant, each stating, 'In exceptional situations such as loss, damage, or temporary failure of corporate cards, employees may use personal funds and submit reimbursement claims with valid supporting proof,' which directly addresses the input. No irrelevant nodes are ranked above relevant ones, resulting in perfect contextual precision."
+        },
+        "context_recall": {
+            "score": 1.0,
+            "reason": "The score is 1.00 because every part of the expected output is fully supported by all nodes in the retrieval context—great job!"
+        },
+        "context_relevancy": {
+            "score": 0.8571428571428571,
+            "reason": "The score is 0.86 because, despite some irrelevant or incomplete context (e.g., 'Daily international meal reimbursement limit:'), there are several highly relevant statements such as 'In exceptional situations such as loss, damage, or temporary failure of corporate cards, employees may use personal funds and submit reimbursement claims with valid supporting proof.' This directly addresses the input question about using cash and getting reimbursed after losing a company credit card."
+        },
+        "exact_match": {
+            "score": 0.0
+        }
+    }
+]

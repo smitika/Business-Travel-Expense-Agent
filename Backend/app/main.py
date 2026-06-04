@@ -16,10 +16,16 @@ SHARED_DATA_DIR = Path("data/shared")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Auto-ingest policy on startup
+    print(f"CWD: {os.getcwd()}")
+    print(f"Policy path: {POLICY_PATH.resolve()}")
+    print(f"Policy exists: {POLICY_PATH.exists()}")
     if POLICY_PATH.exists():
+        print("Starting ingestion...")
         os.makedirs(SHARED_INDEX_DIR, exist_ok=True)
         ingest_file(str(POLICY_PATH), str(SHARED_INDEX_DIR))
+        print("Ingestion complete.")
+    else:
+        print("Policy file NOT found — skipping ingestion.")
     yield
 
 app = FastAPI(lifespan=lifespan)

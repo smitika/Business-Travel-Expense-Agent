@@ -1,4 +1,5 @@
-from typing import Optional
+
+from typing import Any, List, Optional, Dict
 from typing_extensions import TypedDict
 
 class AgentState(TypedDict):
@@ -8,3 +9,4 @@ class AgentState(TypedDict):
     rag_response: Optional[str]       # answer from RAG agent
     validation_result: Optional[str]  # "approved" / "flagged" / "rejected"
     final_response: Optional[str]     # what gets sent back to user
+    chat_history: List[Dict[str, Any]]

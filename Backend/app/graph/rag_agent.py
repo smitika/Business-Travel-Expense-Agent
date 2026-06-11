@@ -69,4 +69,4 @@ def rag_node(state: AgentState) -> AgentState:
 
     answer = chain.invoke(question)
 
-    return {**state, "rag_response": answer, "final_response": answer}
+    return {**state, "rag_response": answer, "final_response": answer, "user_message": question}

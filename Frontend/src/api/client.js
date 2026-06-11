@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = "https://business-travel-expense-agent.onrender.com";
+const API = "http://localhost:8000";
 
 //receipt upload
 export const uploadFile = async (file) => {
@@ -14,7 +14,27 @@ export const uploadFile = async (file) => {
   return res.data;
 };
 
-export const askQuestion = async (question) => {
-  const res = await axios.post(`${API}/query`, { message: question });
+export const askQuestion = async (question, sessionId) => {
+  const res = await axios.post(`${API}/query`, { message: question, session_id: sessionId });
   return res.data;
 };
+
+export const ingestion = async ()=>{
+  const res = await axios.post(`${API}/initiate-ingest`);
+  return res.data;
+}
+
+export const checkPolicyIngested = async ()=>{
+  const res = await axios.get(`${API}/check-ingest`);
+  return res.data;
+}
+
+export const createSession = async () => {
+  const res = await axios.post(`${API}/session`);
+  return res.data;
+}
+
+export const getHistory = async (sessionId) => {
+  const res = await axios.get(`${API}/history/${sessionId}`);
+  return res.data;
+}

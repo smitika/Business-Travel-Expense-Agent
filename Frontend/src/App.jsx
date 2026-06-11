@@ -1,5 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-import LandingPage from "./pages/landing_page";
+import LandingPage from "./pages/landing_Page";
 import Interraction from "./pages/Interraction";
 import AdminLogin from "./pages/admin_Login";
 

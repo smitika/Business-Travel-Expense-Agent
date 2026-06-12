@@ -62,7 +62,7 @@ async def query(request: QueryRequest, db: Session = Depends(get_db)):
         FROM chat_history
         WHERE session_id = :sid
         ORDER BY created_at DESC
-        LIMIT 4
+        LIMIT 2
     """),
     {"sid": request.session_id}
     )

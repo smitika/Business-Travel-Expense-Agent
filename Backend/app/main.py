@@ -1,14 +1,13 @@
-from datetime import datetime
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import UploadFile, File,Form, HTTPException
+from fastapi import UploadFile, File, HTTPException
 from pathlib import Path
 from app.database.db import get_db
 from app.services.ingest import ingest_file
 import os
 from app.graph.graph import graph
-import cloudinary.uploader
+
 from sqlalchemy.orm import Session
 from app.database.db import get_db
 from sqlalchemy import text
@@ -35,14 +34,22 @@ class QueryRequest(BaseModel):
     session_id: str
     message: str
 
-class IngestRequest(BaseModel):
-    policy_id : int
-    policy_path : str
 
 @app.get("/")
 def root():
     print("GET / HIT")
     return {"status": "ok"}
+
+
+# @app.post("/upload")
+# async def upload_file(file: UploadFile = File(...)):
+#     os.makedirs(SHARED_DATA_DIR, exist_ok=True)
+#     os.makedirs(SHARED_INDEX_DIR, exist_ok=True)
+#     file_path = SHARED_DATA_DIR / file.filename
+#     with open(file_path, "wb") as f:
+#         f.write(await file.read())
+#     ingest_file(str(file_path), str(SHARED_INDEX_DIR))
+#     return {"message": f"'{file.filename}' uploaded successfully"}
 
 @app.post("/query")
 async def query(request: QueryRequest, db: Session = Depends(get_db)):
@@ -106,49 +113,24 @@ async def hitl():
 
 
 @app.post("/initiate-ingest")
-async def initiate_ingest(request: IngestRequest, db: Session = Depends(get_db)):
+async def initiate_ingest():
     print("POST /initiate-ingest HIT")
-    policy_index_dir = str(SHARED_INDEX_DIR / f"policy_{request.policy_id}")
-    print("Starting ingestion...")
-    ingest_file(request.policy_path, policy_index_dir)
-    print("Ingestion complete.")
-    db.execute(
-        text("""UPDATE policies 
-                SET is_active = TRUE, ingested = TRUE, 
-                vector_path = :vector_path, updated_at = NOW() 
-                WHERE policy_id = :id"""),
-        {"vector_path": policy_index_dir, "id": request.policy_id}
-    )
-    db.commit()
-    return {"ingestion_complete": True}
+    if POLICY_PATH.exists():
+        print("Starting ingestion...")
+        os.makedirs(SHARED_INDEX_DIR, exist_ok=True)
+        ingest_file(str(POLICY_PATH), str(SHARED_INDEX_DIR))
+        print("Ingestion complete.")
+        return {"ingestion_complete": True}
+    else:
+        print("Policy file NOT found — skipping ingestion.")
+    return {"ingestion_complete": False}
+    
 
 
-@app.get("/check-ingest/{policy_id}")
-async def check_ingest(policy_id: int, db: Session = Depends(get_db)):
-    result = db.execute(
-        text("SELECT ingested FROM policies WHERE policy_id = :id"),
-        {"id": policy_id}
-    ).mappings().first()
-    return {"ingested": result["ingested"] if result else False}
-
-
-@app.post("/activate-policy/{policy_id}")
-async def activate_policy(policy_id: int, db: Session = Depends(get_db)):
-    db.execute(
-        text("UPDATE policies SET is_active = TRUE, updated_at = NOW() WHERE policy_id = :id"),
-        {"id": policy_id}
-    )
-    db.commit()
-    return {"activated": True}
-
-@app.post("/deactivate-policy/{policy_id}")
-async def deactivate_policy(policy_id: int, db: Session = Depends(get_db)):
-    db.execute(
-        text("UPDATE policies SET is_active = FALSE, updated_at = NOW() WHERE policy_id = :id"),
-        {"id": policy_id}
-    )
-    db.commit()
-    return {"deactivated": True}
+@app.get("/check-ingest")
+async def check_ingest():
+    index_file = SHARED_INDEX_DIR / "index.faiss"
+    return {"ingested": index_file.exists()}
 
 
 @app.post("/session")
@@ -180,53 +162,3 @@ def get_history(
     )
 
     return result.mappings().all()
-
-@app.get("/policies")
-def get_policies(db: Session = Depends(get_db)):
-    result = db.execute(
-        text("""SELECT policy_id,policy_name,file_path,valid_from,valid_till,is_active,ingested,created_at FROM policies WHERE is_deleted = FALSE ORDER BY created_at DESC"""))
-    return {"policies": result.mappings().all()}
-
-
-@app.post("/upload-policy")
-async def upload_policy(
-    file: UploadFile = File(...),
-    valid_from: str = Form(...),
-    valid_to: str = Form(...),
-    db: Session = Depends(get_db)
-    ):
-
-    # 1. Upload to Cloudinary
-    upload_result = cloudinary.uploader.upload(
-        file.file,
-        folder="home/travel-policies",
-        resource_type="raw"
-    )
-    file_url = upload_result["secure_url"]
-    policy_name = file.filename.replace("_", " ").replace(".pdf", "").title()
-    valid_from_dt = datetime.strptime(valid_from, "%Y-%m-%d")
-    valid_to_dt = datetime.strptime(valid_to, "%Y-%m-%d")
-
-    if valid_from_dt > valid_to_dt:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid date range"
-        )
-    
-    # 3. Insert into DB (matching your schema)
-    db.execute(
-        text("""
-             INSERT INTO policies (policy_name,file_path,valid_from,valid_till,ingested,is_active,vector_path,is_deleted,deleted_at,created_at,updated_at)VALUES (:policy_name,:file_path,:valid_from,:valid_to,FALSE,FALSE,NULL,FALSE,NULL,NOW(),NOW())"""),{"policy_name": policy_name,"file_path": file_url,"valid_from":valid_from_dt,"valid_to":valid_to_dt})
-    db.commit()
-    return {
-        "message": "Policy uploaded successfully"
-    }
-
-@app.get("/get-active-policies")
-async def get_active_policies(db: Session = Depends(get_db)):
-    result=db.execute(
-    text(""" SELECT policy_id,policy_name from policies WHERE is_active = TRUE ORDER BY created_at DESC""")
-    )
-    policies = [dict(row) for row in result.mappings().all()]
-    return {"active_policies": policies}
-

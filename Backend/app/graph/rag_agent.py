@@ -10,15 +10,35 @@ from app.core.config import (
     AZURE_OPENAI_EMBEDDING_DEPLOYMENT
 )
 from app.graph.state import AgentState
+from app.database.db import get_db
 from pathlib import Path
-
-SHARED_INDEX_DIR = str(Path("faiss_index/shared"))
+from sqlalchemy import text
 
 def format_docs(docs):
     return "\n\n".join([d.page_content for d in docs])
 
+def get_active_vector_path() -> str | None:
+    db = next(get_db())
+    try:
+        result = db.execute(
+            text("SELECT vector_path FROM policies WHERE is_active = TRUE AND is_deleted = FALSE LIMIT 1")
+        ).mappings().first()
+        return result["vector_path"] if result else None
+    finally:
+        db.close()
+
 def rag_node(state: AgentState) -> AgentState:
     question = state["user_message"]
+
+    vector_path = get_active_vector_path()
+
+    if not vector_path:
+        return {
+            **state,
+            "rag_response": "No active policy found. Please contact your administrator.",
+            "final_response": "No active policy found. Please contact your administrator.",
+            "user_message": question
+        }
 
     embeddings = AzureOpenAIEmbeddings(
         azure_endpoint=AZURE_OPENAI_ENDPOINT,
@@ -27,7 +47,7 @@ def rag_node(state: AgentState) -> AgentState:
         azure_deployment=AZURE_OPENAI_EMBEDDING_DEPLOYMENT
     )
 
-    db = FAISS.load_local(SHARED_INDEX_DIR, embeddings, allow_dangerous_deserialization=True)
+    db = FAISS.load_local(vector_path, embeddings, allow_dangerous_deserialization=True)
     retriever = db.as_retriever(search_kwargs={"k": 4})
 
     llm = AzureChatOpenAI(

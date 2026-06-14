@@ -3,7 +3,7 @@ export default function AdminLogin() {
     const navigate = useNavigate();
     const handleClick = () => {
         localStorage.setItem("role", "admin");
-        navigate("/user-interraction",{ replace: true });
+        navigate("/admin-dashboard",{ replace: true });
     }
   return (
     <div className="h-screen bg-[#0b1120] text-white flex items-center justify-center px-6">

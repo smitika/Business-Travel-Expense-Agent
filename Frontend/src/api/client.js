@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = "https://business-travel-expense-agent.onrender.com";
+const API = "http://localhost:8000";
 
 //receipt upload
 export const uploadFile = async (file) => {
@@ -19,13 +19,26 @@ export const askQuestion = async (question, sessionId) => {
   return res.data;
 };
 
-export const ingestion = async ()=>{
-  const res = await axios.post(`${API}/initiate-ingest`);
+export const ingestion = async (policy_id, policy_path) => {
+    const res = await axios.post(`${API}/initiate-ingest`, {
+        policy_id,
+        policy_path
+    });
+    return res.data;
+};
+
+export const checkPolicyIngested = async (policy_id) => {
+  const res = await axios.get(`${API}/check-ingest/${policy_id}`);
   return res.data;
 }
 
-export const checkPolicyIngested = async ()=>{
-  const res = await axios.get(`${API}/check-ingest`);
+export const activate_policy = async (policy_id) => {
+  const res = await axios.post(`${API}/activate-policy/${policy_id}`);
+  return res.data;
+}
+
+export const deactivate_policy = async (policy_id) => {
+  const res = await axios.post(`${API}/deactivate-policy/${policy_id}`);
   return res.data;
 }
 
@@ -36,5 +49,28 @@ export const createSession = async () => {
 
 export const getHistory = async (sessionId) => {
   const res = await axios.get(`${API}/history/${sessionId}`);
+  return res.data;
+}
+
+export const fetch_policies = async () => {
+  const res = await axios.get(`${API}/policies`);
+  return res.data;
+}
+
+export const upload_policy = async (file,validFrom,validTo) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("valid_from", validFrom);
+  formData.append("valid_to", validTo);
+  const res = await axios.post(`${API}/upload-policy`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return res.data;
+};
+
+export const get_active_policies = async()=>{
+  const res = await axios.get(`${API}/get-active-policies`);
   return res.data;
 }

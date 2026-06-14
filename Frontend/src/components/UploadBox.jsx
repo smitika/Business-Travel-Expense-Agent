@@ -1,25 +1,51 @@
-import { useState } from "react";
+import { useState , useEffect} from "react";
 import { uploadFile } from "../api/client";
-import { ingestion } from "../api/client";
+import { ingestion, fetch_policies , upload_policy} from "../api/client";
 
 export default function UploadBox({ role,policyIngested, setPolicyIngested }) {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-
+  const [policies, setpolicies] = useState([]);
   const [policyLoading, setPolicyLoading] = useState(false);
 
- const handleIngestion = async () => {
-  setPolicyLoading(true);
-  try {
-    const data = await ingestion();
-    if (data.ingestion_complete) {
-      setPolicyIngested(true);
+  const handleUploadPolicy = async () => {
+    if (!file) return;
+    try {
+      setLoading(true);
+      const res=await upload_policy(file);
+      alert("Policy uploaded successfully");
+      await fetch_policies();
+      setFile(null);
+      }catch (err) {
+        console.error(err);
+        alert("Failed to upload policy");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  const handleIngestion = async () => {
+    setPolicyLoading(true);
+    try {
+      const data = await ingestion();
+      if (data.ingestion_complete) {
+        setPolicyIngested(true);
+      }
+    } finally {
+      setPolicyLoading(false);
     }
-  } finally {
-    setPolicyLoading(false);
-  }
-};
+  };
+
+  useEffect(() => {
+    fetch_policies()
+    .then((data)=>{
+      setpolicies(data.policies);
+    })
+    .catch(() => {
+      setPolicies([]);
+    });
+  },[]);
 
   return (
   <div className="h-full bg-[#111827] p-6 flex flex-col">
@@ -37,49 +63,79 @@ export default function UploadBox({ role,policyIngested, setPolicyIngested }) {
     </div>
 
     {role === "admin" && (
-      <div className="space-y-3 mb-6">
-        {policyLoading ? (
-          <button
-            disabled
-            className="w-full py-3 rounded-xl bg-gray-500 font-semibold cursor-not-allowed"
-          >
-            Ingesting Policy...
-          </button>
-        ) : policyIngested === null ? (
-          <button
-            disabled
-            className="w-full py-3 rounded-xl bg-gray-500 font-semibold cursor-not-allowed"
-          >
-            Checking Policy...
-          </button>
-        ) : policyIngested === true ? (
-          <button
-            disabled
-            className="w-full py-3 rounded-xl bg-gray-500 font-semibold cursor-not-allowed"
-          >
-            Policy Ingested
-          </button>
+    <div className="space-y-3 mb-6">
+      <p className="text-white font-semibold mb-2">LIST OF POLICIES</p>
+
+      {/* SCROLLABLE LIST — fixed height, upload stays put */}
+      <div className="max-h-[168px] overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-gray-600">
+        {policies.length === 0 ? (
+          <p className="text-gray-400 text-sm">No policies uploaded</p>
         ) : (
-          <button
-            onClick={handleIngestion}
-            className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold transition"
-          >
-            Ingest Current Policy
-          </button>
+          policies.map((policy) => (
+            <div
+              key={policy.policy_id}
+              className="flex items-center justify-between bg-[#1f2937] px-3 py-2 rounded-lg text-white"
+            >
+              {/* LEFT */}
+              <div className="flex items-center gap-3 min-w-0">
+                <input
+                  type="checkbox"
+                  checked={policy.is_active}
+                  readOnly
+                  className="w-4 h-4 accent-green-500 shrink-0"
+                />
+                {/* Normalized width — truncates long names */}
+                <span
+                  className="text-sm w-40 truncate"
+                  title={policy.policy_name}
+                >
+                  {policy.policy_name}
+                </span>
+              </div>
+
+              {/* RIGHT */}
+              <div className="flex gap-2 shrink-0">
+                {!policy.is_active ? (
+                  <button className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-500 rounded">
+                    Activate
+                  </button>
+                ) : (
+                  <button className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-500 rounded">
+                    Deactivate
+                  </button>
+                )}
+                {!policy.is_deleted && (
+                  <button className="px-2 py-1 text-xs bg-red-600 hover:bg-red-500 rounded">
+                    Archive
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
         )}
-
-        <label className="w-full block py-3 text-center rounded-xl bg-emerald-600 hover:bg-emerald-500 cursor-pointer transition font-medium text-white">
-          Upload New Policy
-
-          <input
-            type="file"
-            className="hidden"
-            onChange={(e) => setFile(e.target.files[0])}
-          />
-        </label>
-
       </div>
-    )}
+
+      {/* UPLOAD — always visible, never shifts */}
+      <div className="mt-4 space-y-3">
+        <input
+          type="file"
+          onChange={(e) => setFile(e.target.files[0])}
+          className="w-full text-sm text-gray-300"
+        />
+        <button
+          onClick={handleUploadPolicy}
+          disabled={!file || loading}
+          className={`w-full py-3 rounded-xl font-medium transition
+            ${!file || loading
+              ? "bg-gray-600 cursor-not-allowed"
+              : "bg-emerald-600 hover:bg-emerald-500 text-white"
+            }`}
+        >
+          {loading ? "Uploading..." : "Upload Policy"}
+        </button>
+      </div>
+    </div>
+  )}
 
     {role === "employee" && (
       <div className="bg-[#1f2937] border border-gray-700 rounded-2xl p-5">
@@ -106,24 +162,6 @@ export default function UploadBox({ role,policyIngested, setPolicyIngested }) {
 
         <button className="w-full mt-5 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-medium transition">
           {loading ? "Processing..." : "Submit Receipt"}
-        </button>
-
-      </div>
-    )}
-
-    {role === "admin" && file && (
-      <div className="bg-[#1f2937] border border-gray-700 rounded-xl p-4">
-
-        <p className="text-xs text-gray-400 mb-1">
-          Selected Policy
-        </p>
-
-        <p className="text-sm text-white break-words">
-          📄 {file.name}
-        </p>
-
-        <button className="w-full mt-4 bg-green-600 hover:bg-green-500 py-2.5 rounded-lg font-medium transition">
-          {loading ? "Uploading..." : "Upload Policy"}
         </button>
 
       </div>

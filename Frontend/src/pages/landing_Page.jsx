@@ -72,9 +72,9 @@ export default function LandingPage() {
               Ask policy questions, upload receipts, and submit claims for reimbursement.
             </p>
 
-            <button onClick={handleEmployeeLogin}
-            disabled={loading}
-              className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 font-semibold transition"
+            <button
+            disabled
+              className="w-full py-3 rounded-xl bg-gray-600 hover:bg-gray-500 font-semibold transition"
             >
               {loading ? "Preparing assistant..." : "Continue as Employee"}
             </button>

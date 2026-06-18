@@ -1,5 +1,6 @@
 from datetime import datetime
 from fastapi import Depends, FastAPI
+import httpx
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import UploadFile, File,Form, HTTPException
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.database.db import get_db
 from sqlalchemy import text
 import uuid
+import requests
 
 
 
@@ -25,74 +27,39 @@ SHARED_DATA_DIR = Path("data/shared")
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origins=["http://localhost:5173", "https://business-travel-expense-agent.vercel.app"]
 )
 
-class QueryRequest(BaseModel):
-    session_id: str
-    message: str
+# class QueryRequest(BaseModel):
+#     session_id: str
+#     message: str
 
 class IngestRequest(BaseModel):
     policy_id : int
     policy_path : str
 
+class AdminSessionRequest(BaseModel):
+    policy_id: int
+
+class ChatRequest(BaseModel):
+    session_id: str
+    policy_id: int
+    vector_path :str
+    chat_mode: str
+    message: str
+
+class EmployeeClaimSessionRequest(BaseModel):
+    travel_start: str
+    travel_end: str
+
+
 @app.get("/")
 def root():
     print("GET / HIT")
     return {"status": "ok"}
-
-@app.post("/query")
-async def query(request: QueryRequest, db: Session = Depends(get_db)):
-
-    history_result = db.execute(
-    text("""
-        SELECT
-        user_message,
-        assistant_message
-        FROM chat_history
-        WHERE session_id = :sid
-        ORDER BY created_at DESC
-        LIMIT 2
-    """),
-    {"sid": request.session_id}
-    )
-    chat_history = history_result.mappings().all()
-    initial_state = {
-        "user_message": request.message,
-        "chat_history": chat_history,
-        "file_path": None,
-        "intent": "rag",
-        "rag_response": None,
-        "validation_result": None,
-        "final_response": None,
-    }
-
-    result = graph.invoke(initial_state)
-
-    db.execute(
-    text("""
-        INSERT INTO chat_history
-        (session_id, user_message, assistant_message)
-        VALUES (:sid, :user_msg, :assistant_msg)
-    """),
-    {
-        "sid": request.session_id,
-        "user_msg": result["user_message"],
-        "assistant_msg": result["final_response"]
-    }
-    )
-
-    db.execute(text("""UPDATE sessions SET last_active_at = NOW() WHERE session_id = :sid"""),
-    {"sid": request.session_id})
-
-    db.commit()
-
-    return {
-        "response": result["final_response"]
-    }
 
 
 @app.post("/hitl")
@@ -108,19 +75,18 @@ async def hitl():
 @app.post("/initiate-ingest")
 async def initiate_ingest(request: IngestRequest, db: Session = Depends(get_db)):
     print("POST /initiate-ingest HIT")
-    policy_index_dir = str(SHARED_INDEX_DIR / f"policy_{request.policy_id}")
     print("Starting ingestion...")
-    ingest_file(request.policy_path, policy_index_dir)
+    storage_path = ingest_file(request.policy_path, request.policy_id)
     print("Ingestion complete.")
     db.execute(
         text("""UPDATE policies 
                 SET is_active = TRUE, ingested = TRUE, 
                 vector_path = :vector_path, updated_at = NOW() 
                 WHERE policy_id = :id"""),
-        {"vector_path": policy_index_dir, "id": request.policy_id}
+        {"vector_path": storage_path, "id": request.policy_id}
     )
     db.commit()
-    return {"ingestion_complete": True}
+    return {"ingestion_complete": True, "vector_path": storage_path}
 
 
 @app.get("/check-ingest/{policy_id}")
@@ -150,36 +116,6 @@ async def deactivate_policy(policy_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"deactivated": True}
 
-
-@app.post("/session")
-def create_session(db: Session = Depends(get_db)):
-    session_id = str(uuid.uuid4())
-    db.execute(
-        text("INSERT INTO sessions (session_id, last_active_at) VALUES (:sid, NOW())"),
-        {"sid": session_id}
-    )
-    db.commit()
-    return {"session_id": session_id}
-
-
-@app.get("/history/{session_id}")
-def get_history(
-    session_id: str,
-    db: Session = Depends(get_db)):
-    result = db.execute(
-        text("""
-            SELECT
-                user_message,
-                assistant_message,
-                created_at
-            FROM chat_history
-            WHERE session_id = :sid
-            ORDER BY created_at ASC
-        """),
-        {"sid": session_id}
-    )
-
-    return result.mappings().all()
 
 @app.get("/policies")
 def get_policies(db: Session = Depends(get_db)):
@@ -230,3 +166,107 @@ async def get_active_policies(db: Session = Depends(get_db)):
     policies = [dict(row) for row in result.mappings().all()]
     return {"active_policies": policies}
 
+
+@app.post("/admin-chat-session")
+async def create_admin_chat_session(request: AdminSessionRequest,db: Session = Depends(get_db)):
+    policy = db.execute(text("""SELECT policy_id,file_path,vector_path FROM policies WHERE policy_id = :policy_id AND is_deleted = FALSE"""),{"policy_id": request.policy_id}).mappings().first()
+
+    if not policy:
+        raise HTTPException(
+            status_code=404,
+            detail="Policy not found"
+        )
+    file_path = policy["file_path"]
+    vector_path = policy["vector_path"]
+
+    if not vector_path:
+        print("Starting ingestion...")
+        vector_path = ingest_file(file_path, request.policy_id)
+        print("Ingestion complete!")
+        db.execute(text("""UPDATE policies SET ingested = TRUE , vector_path = :vector_path WHERE policy_id = :policy_id"""),{"vector_path": vector_path, "policy_id":request.policy_id})
+
+    session_id = str(uuid.uuid4())
+
+    return {
+        "session_id": session_id,
+        "policy_id": request.policy_id,
+        "vector_path" :vector_path,
+        "chat_mode": "admin_test"
+    }
+
+@app.post("/chat")
+async def chat(request: ChatRequest, db: Session = Depends(get_db)):
+    vector_path = request.vector_path
+    initial_state = {
+        "session_id": request.session_id,
+        "policy_id": request.policy_id,
+        "chat_mode": request.chat_mode,
+        "user_message": request.message,
+        "vector_path": vector_path
+    }
+    llm_result = graph.invoke(
+        initial_state,
+        config={
+            "configurable": {
+                "thread_id": request.session_id
+            }
+        }
+    )
+    return {
+    "response": llm_result["final_response"],
+    "retrieved_chunks": llm_result.get("retrieved_chunks", []),
+    "retrieval_confidence": llm_result.get("retrieval_confidence", None)
+}
+
+@app.post("/employee-claim-session")
+async def create_employee_claim_session(request: EmployeeClaimSessionRequest, db: Session = Depends(get_db)):
+    policy = db.execute(
+        text("""SELECT policy_id, file_path, vector_path
+        FROM policies
+        WHERE is_deleted = FALSE
+          AND :travel_start >= valid_from
+          AND :travel_end <= valid_till
+        ORDER BY valid_from DESC
+        LIMIT 1"""),{"travel_start": request.travel_start, "travel_end":request.travel_end}).mappings().first()
+
+    if not policy:
+        raise HTTPException(status_code=404, detail="No active policy found")
+
+    vector_path = policy["vector_path"]
+    file_path = policy["file_path"]
+    policy_id = policy["policy_id"]
+
+    if not vector_path:
+        print("Starting ingestion...")
+        vector_path = ingest_file(file_path,policy_id)
+        print("Ingestion complete!")
+        db.execute(text("""UPDATE policies SET ingested = TRUE , vector_path = :vector_path WHERE policy_id = :policy_id"""),{"vector_path": vector_path, "policy_id":policy_id})
+
+    session_id = str(uuid.uuid4())
+    return {
+        "session_id": session_id,
+        "policy_id": policy_id,
+        "vector_path": vector_path,
+        "chat_mode": "claim_query",
+    }
+
+
+@app.post("/employee-travel-session")
+async def create_employee_travel_session(db: Session = Depends(get_db)):
+    policy = db.execute(
+        text("""SELECT policy_id,vector_path FROM policies 
+                WHERE is_active = TRUE AND is_deleted = FALSE 
+                ORDER BY updated_at DESC LIMIT 1""")
+    ).mappings().first()
+
+    if not policy:
+        raise HTTPException(status_code=404, detail="No active policy found")
+
+    vector_path = policy["vector_path"]
+    session_id = str(uuid.uuid4())
+    return {
+        "session_id": session_id,
+        "policy_id": policy["policy_id"],
+        "vector_path": vector_path,
+        "chat_mode": "travel_query"
+    }

@@ -9,7 +9,7 @@ export default function Interraction() {
   const role = localStorage.getItem("role");
 
   useEffect(() => {
-    fetch("https://business-travel-expense-agent.onrender.com")
+    fetch("http://localhost:8000")
       .then(() => setReady(true))
       .catch(() => setReady(false));
   }, []);

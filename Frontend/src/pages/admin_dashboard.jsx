@@ -46,7 +46,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Test Chatbot */}
-          <div
+          <div onClick={()=>navigate("/test-chatbot")}
             className="bg-[#1f2937] border border-gray-700 rounded-2xl p-8 hover:border-blue-500 hover:scale-105 transition cursor-pointer"
           >
             <div className="text-5xl mb-5">🤖</div>

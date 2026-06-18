@@ -3,10 +3,11 @@ from typing import Any, List, Optional, Dict
 from typing_extensions import TypedDict
 
 class AgentState(TypedDict):
-    user_message: Optional[str]       # text query from user
-    file_path: Optional[str]          # uploaded receipt path
-    intent: Optional[str]             # "rag" or "validate"
-    rag_response: Optional[str]       # answer from RAG agent
-    validation_result: Optional[str]  # "approved" / "flagged" / "rejected"
-    final_response: Optional[str]     # what gets sent back to user
-    chat_history: List[Dict[str, Any]]
+    session_id: str
+    policy_id: int
+    chat_mode: str
+    user_message: str
+    vector_path: str
+    final_response: Optional[str]
+    retrieved_chunks: Optional[list]
+    retrieval_confidence: Optional[float]

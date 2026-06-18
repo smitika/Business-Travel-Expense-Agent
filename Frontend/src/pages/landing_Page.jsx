@@ -8,17 +8,6 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  const handleEmployeeLogin = async () => {
-  localStorage.setItem("role", "employee");
-  setLoading(true);
-  const data = await checkPolicyIngested();
-  if (!data.ingested) {
-    await ingestion();
-  }
-  setLoading(false);
-  navigate("/user-interraction");
-  };
-
   return (
     <div className="h-screen bg-[#0b1120] text-white flex items-center justify-center px-6">
 
@@ -72,11 +61,10 @@ export default function LandingPage() {
               Ask policy questions, upload receipts, and submit claims for reimbursement.
             </p>
 
-            <button
-            disabled
-              className="w-full py-3 rounded-xl bg-gray-600 hover:bg-gray-500 font-semibold transition"
+            <button onClick={()=> navigate("/employee-dashboard")}
+              className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 font-semibold transition"
             >
-              {loading ? "Preparing assistant..." : "Continue as Employee"}
+              Continue as Employee
             </button>
 
           </div>

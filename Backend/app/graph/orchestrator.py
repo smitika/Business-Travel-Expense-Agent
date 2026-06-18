@@ -9,13 +9,15 @@ def orchestrator_router(state: AgentState) -> str:
 
     return "rag_agent"
 
-
 def orchestrator_response(state: AgentState) -> AgentState:
-    """
-    Exit-point orchestrator.
-    Formats the final response before returning to the user.
-    """
+    response = state.get("final_response", "")
+    chat_mode = state.get("chat_mode")
+    
+    if not response:
+        response = "Sorry, I couldn't generate a response."
 
-    state["final_response"] = state.get("rag_response")
+    if chat_mode == "claim_query":
+        response = f"CLAIM EVALUATION:\n\n{response}"
 
+    state["final_response"] = response
     return state

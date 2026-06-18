@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = "https://business-travel-expense-agent.onrender.com";
+const API = "http://localhost:8000";
 
 //receipt upload
 export const uploadFile = async (file) => {
@@ -72,5 +72,25 @@ export const upload_policy = async (file,validFrom,validTo) => {
 
 export const get_active_policies = async()=>{
   const res = await axios.get(`${API}/get-active-policies`);
+  return res.data;
+}
+
+export const create_admin_session = async(data)=>{
+  const res = await axios.post(`${API}/admin-chat-session`,data);
+  return res.data;
+}
+
+export const chat =async(data)=>{
+  const res = await axios.post(`${API}/chat`,data);
+  return res.data;
+}
+
+export const create_employee_claim_session = async (data) => {
+  const res = await axios.post(`${API}/employee-claim-session`, data);
+  return res.data;
+}
+
+export const create_employee_travel_session = async () => {
+  const res = await axios.post(`${API}/employee-travel-session`);
   return res.data;
 }

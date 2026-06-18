@@ -13,32 +13,115 @@ from app.graph.state import AgentState
 from app.database.db import get_db
 from pathlib import Path
 from sqlalchemy import text
+import os
+import tempfile
+import pickle
+from app.core.supabase_client import supabase
 
 def format_docs(docs):
     return "\n\n".join([d.page_content for d in docs])
 
-def get_active_vector_path() -> str | None:
-    db = next(get_db())
-    try:
-        result = db.execute(
-            text("SELECT vector_path FROM policies WHERE is_active = TRUE AND is_deleted = FALSE LIMIT 1")
-        ).mappings().first()
-        return result["vector_path"] if result else None
-    finally:
-        db.close()
+def build_prompt(chat_mode: str):
+    """
+    3-mode prompt system
+    """
 
+    if chat_mode == "admin_test":
+
+        return ChatPromptTemplate.from_template("""
+        You are a Corporate Travel Policy AI used for INTERNAL ADMIN TESTING.
+
+        Use the provided context to answer.
+
+        Your role:
+        - Answer questions strictly using the provided policy context.
+        - Be precise, factual, and policy-grounded.
+
+        Context:
+        {context}
+
+        User Question:
+        {question}
+
+        Instructions:
+        - Provide a clear and direct answer.
+        - If policy information is partial, explicitly mention uncertainty.
+        - Use the policy context to infer reasonable answers when the rule is indirectly stated.
+        - If the policy restricts luxury or non-standard options, apply that rule logically.
+        - Do not invent benefits, limits, or approvals that are not supported by the context.
+        - Keep answers short (2 to 5 lines).
+        - If the information is completely unavailable in the document, say:
+        "The document does not contain this information."
+        - Do not be conversational.
+        - This is a debugging mode, so accuracy is more important than friendliness.
+        - Do NOT include the context, chunk text, or any debug information in your answer.
+        - Answer only in your own words based on what the context says.
+        Answer:
+        """)
+
+    elif chat_mode == "claim_query":
+
+        return ChatPromptTemplate.from_template("""
+        You are a CORPORATE TRAVEL CLAIM ASSISTANT.
+        Your job is to evaluate employee claims strictly based on policy context.
+
+        Rules:
+        - Be strict and policy-driven.
+        - Do NOT approve anything not explicitly supported.
+        - If policy is unclear, respond conservatively.
+
+        Context:
+        {context}
+
+        User Question:
+        {question}
+
+        Instructions:
+        - Determine eligibility clearly.
+        - Use the policy context to infer reasonable answers when the rule is indirectly stated.
+        - If the policy restricts luxury or non-standard options, apply that rule logically.
+        - Do not invent benefits, limits, or approvals that are not supported by the context.
+        - Keep answers short (2 to 5 lines).
+        - If rejected, explain why in simple terms.
+        - Do NOT include the context, chunk text, or any debug information in your answer.
+        - Answer only in your own words based on what the context says.
+                                                
+        Answer:
+        """)
+
+    else:
+
+        return ChatPromptTemplate.from_template("""
+        You are a CORPORATE TRAVEL ASSISTANT helping employees with pre-travel and general travel planning queries.
+
+        Your role:
+        - Help users understand travel policies and plan compliant travel.
+        - Provide helpful, policy-aware guidance.
+
+        Context:
+        {context}
+
+        Question:
+        {question}
+        
+         Instructions:
+        - Answer clearly and concisely.
+        - Use the policy context to infer reasonable answers when the rule is indirectly stated.
+        - If the policy restricts luxury or non-standard options, apply that rule logically.
+        - Do not invent benefits, limits, or approvals that are not supported by the context.
+        - Keep answers short (2 to 5 lines).
+        - If the information is completely unavailable in the document, say:
+        "The document does not contain this information."
+        - Do NOT include the context, chunk text, or any debug information in your answer.
+        - Answer only in your own words based on what the context says.
+
+        Answer:
+        """)
+    
 def rag_node(state: AgentState) -> AgentState:
     question = state["user_message"]
-
-    vector_path = get_active_vector_path()
-
-    if not vector_path:
-        return {
-            **state,
-            "rag_response": "No active policy found. Please contact your administrator.",
-            "final_response": "No active policy found. Please contact your administrator.",
-            "user_message": question
-        }
+    chat_mode = state["chat_mode"]
+    vector_path = state["vector_path"]
 
     embeddings = AzureOpenAIEmbeddings(
         azure_endpoint=AZURE_OPENAI_ENDPOINT,
@@ -47,7 +130,14 @@ def rag_node(state: AgentState) -> AgentState:
         azure_deployment=AZURE_OPENAI_EMBEDDING_DEPLOYMENT
     )
 
-    db = FAISS.load_local(vector_path, embeddings, allow_dangerous_deserialization=True)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        for filename in ["index.faiss", "index.pkl"]:
+            file_bytes = supabase.storage.from_("faiss-index").download(f"{vector_path}/{filename}")
+            with open(os.path.join(tmp_dir, filename), "wb") as f:
+                f.write(file_bytes)
+        db: FAISS = FAISS.load_local(tmp_dir, embeddings, allow_dangerous_deserialization=True)
+
+
     retriever = db.as_retriever(search_kwargs={"k": 4})
 
     llm = AzureChatOpenAI(
@@ -57,36 +147,30 @@ def rag_node(state: AgentState) -> AgentState:
         azure_deployment=AZURE_OPENAI_CHAT_DEPLOYMENT
     )
 
-    prompt = ChatPromptTemplate.from_template("""
-    You are a professional corporate travel policy assistant.
-
-    Use the provided context to answer employee travel-related questions accurately and logically.
-
-    Context:
-    {context}
-
-    Question:
-    {question}
-
-    Instructions:
-    - Answer clearly and concisely.
-    - Use the policy context to infer reasonable answers when the rule is indirectly stated.
-    - If the policy restricts luxury or non-standard options, apply that rule logically.
-    - Do not invent benefits, limits, or approvals that are not supported by the context.
-    - Keep answers short (2 to 5 lines).
-    - If the information is completely unavailable in the document, say:
-    "The document does not contain this information."
-
-    Answer:
-    """)
-
+    prompt = build_prompt(chat_mode)
+    
+    docs_with_scores = db.similarity_search_with_score(question, k=4)
+    retrieved_chunks = [
+    {"content": doc.page_content, "score": float(score)}
+    for doc, score in docs_with_scores
+    ]
+    docs = [doc for doc, _ in docs_with_scores]
+    context = format_docs(docs)
     chain = (
-        {"context": retriever | format_docs, "question": lambda x: x}
-        | prompt
+        prompt
         | llm
         | StrOutputParser()
     )
 
-    answer = chain.invoke(question)
+    answer = chain.invoke({
+        "context": context,
+        "question": question
+    })
 
-    return {**state, "rag_response": answer, "final_response": answer, "user_message": question}
+    confidence = float(min(score for _, score in docs_with_scores))
+    return {
+        **state,
+        "final_response": answer,
+        "retrieved_chunks": retrieved_chunks,
+        "retrieval_confidence": confidence
+    }

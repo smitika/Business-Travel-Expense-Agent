@@ -2,82 +2,94 @@ import { useState} from "react";
 import { useNavigate } from "react-router-dom";
 import { ingestion } from "../api/client";
 import { checkPolicyIngested } from "../api/client";
-
+import { Sparkles, ShieldCheck, User } from "lucide-react";
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   return (
-    <div className="h-screen bg-[#0b1120] text-white flex items-center justify-center px-6">
+    <div className="h-screen bg-[#F8FAFC] text-slate-900 flex items-center justify-center px-6">
 
-      <div className="w-full max-w-4xl">
+  <div className="w-full max-w-4xl">
 
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-4">
-          SmartHelp AI Assistant
-          </h1>
+    {/* Brand mark */}
+    <div className="flex items-center justify-center gap-2 mb-6">
+      <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center">
+        <Sparkles size={16} className="text-blue-600" />
+      </div>
+      <span className="text-2xl font-medium text-slate-500">SmartHelp</span>
+    </div>
 
-          <p className="text-gray-400 text-lg">
-            Intelligent policy assistance and travel expense management
-          </p>
+    {/* Hero Section */}
+    <div className="text-center mb-12">
+      <h1 className="text-3xl font-semibold mb-3 text-slate-900 tracking-tight">
+        Travel expense management
+      </h1>
+
+      <p className="text-slate-500 text-base">
+        Intelligent policy assistance and travel expense management
+      </p>
+    </div>
+
+    {/* Role Selection Cards */}
+    <div className="grid md:grid-cols-2 gap-5">
+
+      {/* Admin Card */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-7 hover:border-slate-300 transition-all duration-200 hover:shadow-md">
+
+        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-5">
+          <ShieldCheck size={20} className="text-blue-600" />
         </div>
 
-        {/* Role Selection Cards */}
-        <div className="grid md:grid-cols-2 gap-8">
+        <h2 className="text-base font-semibold mb-1.5 text-slate-900">
+          Administrator
+        </h2>
 
-          {/* Admin Card */}
-          <div className="bg-[#111827] border border-gray-800 rounded-2xl p-8 hover:border-blue-500 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
+        <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+          Upload and update policies, manage reimbursement requests.
+        </p>
 
-            <div className="text-4xl mb-4">🛠️</div>
+        <button onClick={()=> navigate("/admin-login")}
+          className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition active:scale-[0.98]"
+        >
+          Login as Admin
+        </button>
 
-            <h2 className="text-2xl font-bold mb-2">
-              Administrator
-            </h2>
+      </div>
 
-            <p className="text-gray-400 mb-8">
-              Upload and update policies, manage reimbursement requests.
-            </p>
+      {/* Employee Card */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-7 hover:border-slate-300 transition-all duration-200 hover:shadow-md">
 
-            <button onClick={()=> navigate("/admin-login")}
-              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold transition"
-            >
-              Login as Admin
-            </button>
-
-          </div>
-
-          {/* Employee Card */}
-          <div className="bg-[#111827] border border-gray-800 rounded-2xl p-8 hover:border-green-500 transition-all duration-300 hover:shadow-lg hover:shadow-green-500/10">
-
-            <div className="text-4xl mb-4">👤</div>
-
-            <h2 className="text-2xl font-bold mb-2">
-              Employee
-            </h2>
-
-            <p className="text-gray-400 mb-8">
-              Ask policy questions, upload receipts, and submit claims for reimbursement.
-            </p>
-
-            <button onClick={()=> navigate("/employee-dashboard")}
-              className="w-full py-3 rounded-xl bg-green-600 hover:bg-green-500 font-semibold transition"
-            >
-              Continue as Employee
-            </button>
-
-          </div>
-
+        <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-5">
+          <User size={20} className="text-emerald-600" />
         </div>
 
-        {/* Footer */}
-        <div className="text-center mt-10 text-sm text-gray-500">
-          Business Travel Expense Management System
-        </div>
+        <h2 className="text-base font-semibold mb-1.5 text-slate-900">
+          Employee
+        </h2>
+
+        <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+          Ask policy questions, upload receipts, and submit claims for reimbursement.
+        </p>
+
+        <button onClick={()=> navigate("/employee-login")}
+          className="w-full py-2.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-slate-700 text-sm font-medium transition active:scale-[0.98]"
+        >
+          Continue as Employee
+        </button>
 
       </div>
 
     </div>
+
+    {/* Footer */}
+    <div className="text-center mt-10 text-xs text-slate-400">
+      Business Travel Expense Management System
+    </div>
+
+  </div>
+
+</div>
   );
 }

@@ -26,7 +26,7 @@ def ingest_file(policy_path: str, policy_id : int) -> str:
     loader = PyPDFLoader(policy_path)
     docs = loader.load()
 
-    splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=300)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=400)
     chunks = splitter.split_documents(docs)
 
     embeddings = AzureOpenAIEmbeddings(

@@ -138,7 +138,7 @@ def rag_node(state: AgentState) -> AgentState:
         db: FAISS = FAISS.load_local(tmp_dir, embeddings, allow_dangerous_deserialization=True)
 
 
-    retriever = db.as_retriever(search_kwargs={"k": 4})
+    retriever = db.as_retriever(search_kwargs={"k": 6})
 
     llm = AzureChatOpenAI(
         azure_endpoint=AZURE_OPENAI_ENDPOINT,
@@ -149,7 +149,7 @@ def rag_node(state: AgentState) -> AgentState:
 
     prompt = build_prompt(chat_mode)
     
-    docs_with_scores = db.similarity_search_with_score(question, k=4)
+    docs_with_scores = db.similarity_search_with_score(question, k=6)
     retrieved_chunks = [
     {"content": doc.page_content, "score": float(score)}
     for doc, score in docs_with_scores
@@ -167,7 +167,7 @@ def rag_node(state: AgentState) -> AgentState:
         "question": question
     })
 
-    confidence = float(min(score for _, score in docs_with_scores))
+    confidence = float(1 / (1 + min(score for _, score in docs_with_scores)))
     return {
         **state,
         "final_response": answer,

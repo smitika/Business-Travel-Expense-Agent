@@ -51,21 +51,21 @@ export default function Test_Chatbot() {
     };
 
     return (
-        <div className="min-h-screen bg-[#111827] text-white flex flex-col">
+        <div className="min-h-screen bg-[#F8FAFC] text-white flex flex-col">
 
             {/* NAVBAR */}
-            <nav className="h-14 bg-[#1E293B] border-b border-gray-700 px-6 flex items-center justify-between shrink-0">
-                <h1 className="text-xl font-semibold tracking-wide">TEST CHATBOT</h1>
+            <nav className="h-14 bg-[#F8FAFC] border-b border-slate-200 px-6 flex items-center justify-between shrink-0">
+                <h1 className="text-lg font-semibold text-gray-700 tracking-wide">Test Chatbot</h1>
                 <button
                     onClick={() => navigate("/admin-dashboard")}
-                    className="px-4 py-2 rounded-md bg-blue-700 hover:bg-blue-600 transition text-sm"
+                    className="px-4 py-2 rounded-md bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 transition text-sm"
                 >
                     Back
                 </button>
             </nav>
 
             {/* CONTROL BAR */}
-            <div className="px-6 py-3 border-b border-gray-800 flex justify-center shrink-0">
+            <div className="px-6 py-3 border-b border-slate-200 flex justify-center shrink-0">
                 <div className="flex items-center gap-4">
                     <select
                         value={selectedPolicy?.policy_id || ""}
@@ -76,7 +76,7 @@ export default function Test_Chatbot() {
                             setSelectedPolicy(policy);
                         }}
                         disabled={!!sessionData}
-                        className="bg-[#1E293B] border border-gray-700 text-gray-200 px-4 py-2 rounded-md text-sm w-[420px] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-[#F8FAFC] border border-slate-200 text-slate-500 px-4 py-2 rounded-md text-sm w-[420px] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <option value="">Select policy to test</option>
                         {policies.map((p) => (

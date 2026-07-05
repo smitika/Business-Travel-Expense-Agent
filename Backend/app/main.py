@@ -71,9 +71,9 @@ class EmployeeClaimSessionRequest(BaseModel):
     travel_start: str
     travel_end: str
 
-
 @app.get("/health")
-async def health_check():
+@app.head("/health")
+def health():
     return {"status": "healthy"}
 
 @app.post("/login")

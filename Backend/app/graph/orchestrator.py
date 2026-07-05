@@ -2,8 +2,8 @@ from app.graph.state import AgentState
 
 
 def orchestrator_router(state: AgentState) -> str:
-    # Currently only one route — RAG agent handles all chat queries.
-    # Claim validation is handled outside the graph as a background task.
+    if state.get("chat_mode") == "ask_ai_receipt":
+        return "ask_ai_receipt_agent"
     return "rag_agent"
 
 

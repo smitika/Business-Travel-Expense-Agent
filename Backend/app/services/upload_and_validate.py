@@ -38,10 +38,10 @@ def process_uploads_and_validate(
                 text("""
                     INSERT INTO claim_uploads
                         (claim_id, day_number, claim_date, category, file_url,
-                         user_description, status)
+                         user_description, status, file_role)
                     VALUES
                         (:claim_id, :day_number, :claim_date, :category, :file_url,
-                         :description, 'PENDING')
+                         :description, 'PENDING',:file_role)
                 """),
                 {
                     "claim_id": claim_id,
@@ -50,6 +50,7 @@ def process_uploads_and_validate(
                     "category": meta.category,
                     "file_url": file_url,
                     "description": meta.description or "", # Fallback if description is separate
+                    "file_role": meta.file_role or "receipt",
                 }
             )
             logger.info(f"[UploadWorker] Inserted upload row for day={meta.day_number}")

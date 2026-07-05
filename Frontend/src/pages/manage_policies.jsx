@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetch_policies, upload_policy, get_active_policies, deactivate_policy } from "../api/client";
+import { fetch_policies, upload_policy, get_active_policies, deactivate_policy, archive_policy } from "../api/client";
 import Activation_Conf_Modal from  "../components/activationConf";
 
 export default function ManagePolicies() {
@@ -8,6 +8,7 @@ export default function ManagePolicies() {
     const [policies, setPolicies] = useState([]);
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [fetchingPolicies, setFetchingPolicies] = useState(true); // Added to track table-loading state
     const [validFrom, setValidFrom] = useState("");
     const [validTo, setValidTo] = useState("");
     const [error, setError] = useState("");
@@ -24,6 +25,8 @@ export default function ManagePolicies() {
         } catch (err) {
             console.error(err);
             setPolicies([]);
+        } finally {
+            setFetchingPolicies(false); // Disable table loader once data is retrieved
         }
     };
     useEffect(() => {
@@ -81,6 +84,32 @@ export default function ManagePolicies() {
             alert("Deactivation failed!")
         }
     }
+    const handleArchive = async (policy) => {
+        try {
+            // 1. Initial execution call (force: false)
+            const res = await archive_policy(policy.policy_id, false);
+            
+            if (res.status === "requires_confirmation") {
+                // 2. Ask user for confirmation using the backend's dynamic message
+                if (window.confirm(res.message)) {
+                    // 3. Force-archive execution call (force: true)
+                    const forceRes = await archive_policy(policy.policy_id, true);
+                    
+                    if (forceRes.status === "success") {
+                        alert(forceRes.message);
+                        await fetchPolicies(); // Refresh the list
+                    }
+                }
+            } else if (res.status === "success") {
+                // 4. Case 3 execution path: Directly archived without alert confirmation
+                alert(res.message);
+                await fetchPolicies(); // Refresh the list
+            }
+        } catch (err) {
+            console.error(err);
+            alert(err?.response?.data?.detail || "Failed to archive the policy.");
+        }
+    };
     return (
         <div className="min-h-screen bg-[#F8FAFC] text-slate-900">
 
@@ -166,7 +195,33 @@ export default function ManagePolicies() {
                     <div className="ml-6">Actions</div>
                 </div>
                 {/* ROWS */}
-                {policies.length === 0 ? (
+                {fetchingPolicies ? (
+                <div className="flex items-center justify-center p-12 gap-2 text-slate-500">
+                    <svg
+                        className="w-5 h-5 animate-spin text-blue-600"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                    >
+                        <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                        />
+                        <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 
+                                5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 
+                                5.824 3 7.938l3-2.647z"
+                        />
+                    </svg>
+                    <span className="text-sm font-medium">Loading policies...</span>
+                </div>
+                ) : policies.length === 0 ? (
                 <div className="p-6 text-slate-400 text-sm">
                     No policies uploaded
                 </div>
@@ -214,7 +269,9 @@ export default function ManagePolicies() {
                     Activate
                     </button>
                     )}
-                    <button className="w-24 px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-red-200 text-red-600 hover:bg-red-50 transition">
+                    <button className="w-24 px-3 py-1.5 text-xs font-medium rounded-lg bg-white border border-red-200 text-red-600 hover:bg-red-50 transition"
+                    onClick={()=>handleArchive(policy)}
+                    >
                         Archive
                     </button>
                     </div>

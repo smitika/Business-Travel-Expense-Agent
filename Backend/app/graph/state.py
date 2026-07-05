@@ -11,3 +11,4 @@ class AgentState(TypedDict):
     final_response: Optional[str]
     retrieved_chunks: Optional[list]
     retrieval_confidence: Optional[float]
+    structured_context: Optional[str]

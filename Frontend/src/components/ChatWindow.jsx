@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Info, X, Send, Loader2 } from "lucide-react";
 import { chat as sendChat } from "../api/client";
+
 export default function ChatWindow({ sessionData, storageKey, onEndSession, disabled = false }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -8,12 +9,28 @@ export default function ChatWindow({ sessionData, storageKey, onEndSession, disa
   const [modal, setModal] = useState(null); // { chunks, confidence }
   const bottomRef = useRef(null);
 
-  // Restore from sessionStorage
+  // Restore from sessionStorage OR initialize with first Ask AI question/response
   useEffect(() => {
     if (!storageKey) return;
     const saved = sessionStorage.getItem(`chat_history_${storageKey}`);
-    if (saved) setMessages(JSON.parse(saved));
-  }, [storageKey]);
+    
+    if (saved) {
+      setMessages(JSON.parse(saved));
+    } else if (sessionData?.first_question && sessionData?.first_response) {
+      // If no saved history exists, pre-populate with the auto-fired Ask AI message turn
+      setMessages([
+        { role: "user", message: sessionData.first_question },
+        {
+          role: "assistant",
+          message: sessionData.first_response,
+          chunks: [],
+          confidence: null,
+        },
+      ]);
+    } else {
+      setMessages([]);
+    }
+  }, [storageKey, sessionData]);
 
   // Persist to sessionStorage
   useEffect(() => {
@@ -37,7 +54,7 @@ export default function ChatWindow({ sessionData, storageKey, onEndSession, disa
       const res = await sendChat({
         session_id: sessionData.session_id,
         policy_id: sessionData.policy_id,
-        vector_path: sessionData.vector_path,
+        vector_path: sessionData.vector_path || "",
         chat_mode: sessionData.chat_mode,
         message: userMessage,
       });
@@ -124,7 +141,6 @@ export default function ChatWindow({ sessionData, storageKey, onEndSession, disa
             ) : (
               <div className="max-w-2xl bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-bl-sm text-sm text-slate-700 leading-relaxed relative pr-10 shadow-sm">
                 {msg.message}
-                {/* Info button — only shown if chunks exist */}
                 {msg.chunks?.length > 0 && (
                   <button
                     onClick={() => setModal({ chunks: msg.chunks, confidence: msg.confidence })}
@@ -139,7 +155,6 @@ export default function ChatWindow({ sessionData, storageKey, onEndSession, disa
           </div>
         ))}
 
-        {/* Typing indicator */}
         {loadingChat && (
           <div className="flex justify-start">
             <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm">
@@ -191,7 +206,6 @@ export default function ChatWindow({ sessionData, storageKey, onEndSession, disa
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
               <div>
                 <h2 className="text-sm font-semibold text-slate-800">Retrieval Details</h2>
@@ -214,17 +228,11 @@ export default function ChatWindow({ sessionData, storageKey, onEndSession, disa
               </button>
             </div>
 
-            {/* Chunks */}
             <div className="overflow-y-auto px-5 py-4 space-y-3">
               {modal.chunks.map((chunk, i) => (
-                <div
-                  key={i}
-                  className="bg-slate-50 border border-slate-200 rounded-xl p-4"
-                >
+                <div key={i} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-blue-600">
-                      Chunk {i + 1}
-                    </span>
+                    <span className="text-xs font-medium text-blue-600">Chunk {i + 1}</span>
                     {chunk.score !== null && chunk.score !== undefined && (
                       <span className="text-xs text-slate-400 font-mono">
                         score: {typeof chunk.score === "number" ? chunk.score.toFixed(4) : chunk.score}

@@ -15,6 +15,7 @@ class UploadMetadata(BaseModel):
     claim_date: date
     category: str
     description: Optional[str] = None  # mandatory for misc, enforced below
+    file_role: str = "receipt"
 
     @field_validator("category")
     @classmethod

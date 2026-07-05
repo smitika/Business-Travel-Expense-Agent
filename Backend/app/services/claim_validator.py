@@ -69,8 +69,8 @@ def run_claim_validation(claim_id: int) -> None:
         # 4. Fetch all PENDING uploads
         uploads = db.execute(
             text("""
-                SELECT upload_id, day_number, claim_date, category,
-                       file_url, user_description
+                SELECT upload_id, claim_id, day_number, claim_date, category,
+                       file_url, user_description, file_role
                 FROM claim_uploads
                 WHERE claim_id = :claim_id
                   AND status = 'PENDING'
@@ -99,6 +99,7 @@ def run_claim_validation(claim_id: int) -> None:
                     policy_daily_limits=policy_daily_limits,
                     disallowed_items=disallowed_items,
                     daily_totals=daily_totals,
+                    db = db,
                 )
             except Exception as e:
                 logger.exception(f"[Validator] Unexpected error on upload_id={upload['upload_id']}: {e}")
@@ -126,15 +127,17 @@ def _process_single_upload(
     policy_daily_limits: dict,
     disallowed_items: dict,
     daily_totals: dict,
+    db: Session,
 ) -> dict:
 
-    category = category = upload["category"].strip().lower()
+    category = upload["category"].strip().lower()
     file_url = upload["file_url"]
     description = upload["user_description"] or ""
     day_number = upload["day_number"]
+    file_role = upload["file_role"] or "receipt"
 
     base = _empty_verdict()
-
+    base["ocr_invoice_number"] = None
     # ---------------------------------------------------------
     # Step 1: Download receipt
     # ---------------------------------------------------------
@@ -180,18 +183,75 @@ def _process_single_upload(
         "ocr_confidence": ocr.get("confidence"),
         "expense_summary": ocr.get("expense_summary"),
         "detected_doc_type": ocr.get("detected_doc_type"),
+        "ocr_invoice_number": ocr.get("invoice_number"),
     })
 
+    invoice_num = ocr.get("invoice_number")
+    same_claim_duplicate = None
+    duplicate = None
+    if invoice_num:
+    # 1. Check if the exact same invoice was uploaded twice inside THIS SAME claim
+        same_claim_duplicate = db.execute(
+            text("""
+                SELECT upload_id FROM claim_uploads
+                WHERE claim_id = :claim_id
+                AND ocr_invoice_number = :invoice_num
+                AND upload_id != :current_upload_id
+                LIMIT 1
+            """),
+            {
+                "claim_id": upload["claim_id"],
+                "invoice_num": invoice_num,
+                "current_upload_id": upload["upload_id"]
+            }
+        ).mappings().first()
+
+    if same_claim_duplicate:
+        return {
+            **base,
+            "status": "REJECTED",
+            "rejection_reason": f"Duplicate receipt detected within the same claim submission (Invoice #{invoice_num}).",
+        }
+    if invoice_num:
+        # Search for any previous upload with the same invoice number (excluding current upload_id)
+        duplicate = db.execute(
+            text("""
+                SELECT upload_id, status FROM claim_uploads
+                WHERE ocr_invoice_number = :invoice_num
+                  AND upload_id != :current_upload_id
+                  AND status IN ('APPROVED', 'REVIEW')
+                LIMIT 1
+            """),
+            {
+                "invoice_num": invoice_num,
+                "current_upload_id": upload["upload_id"]
+            }
+        ).mappings().first()
+
+        if duplicate:
+            return {
+                **base,
+                "status": "REJECTED",
+                "rejection_reason": f"Duplicate receipt detected. This invoice/receipt number ({invoice_num}) has already been submitted and approved or is currently flagged for review.",
+            }
     # ---------------------------------------------------------
     # Step 3: OCR sanity checks
     # ---------------------------------------------------------
+
     if ocr.get("confidence") == "low":
         return {
             **base,
             "status": "REVIEW",
             "review_reason": "OCR confidence too low.",
         }
-
+    
+    if ocr.get("invoice_number") is None:
+        return {
+            **base,
+            "status": "REVIEW",
+            "review_reason": "Could not extract receipt invoice number.",
+        }
+    
     if ocr.get("ocr_date") is None:
         return {
             **base,
@@ -236,7 +296,14 @@ def _process_single_upload(
     # Step 4: Document type validation
     # ---------------------------------------------------------
     doc_type = ocr.get("detected_doc_type", "unknown")
-
+    if category == "food" and file_role == "receipt":
+        # Check if mandatory slot is actually a receipt
+        if doc_type != "receipt":
+            return {
+                **base,
+                "status": "REJECTED",
+                "rejection_reason": f"Mandatory food slot must contain a valid receipt. Detected document type was '{doc_type}'.",
+            }
     NON_REIMBURSABLE_DOCS = {
         "flight_ticket",
         "hotel_booking_confirmation",
@@ -257,6 +324,59 @@ def _process_single_upload(
             "status": "REVIEW",
             "review_reason": "Unknown document type.",
         }
+    
+    if category == "food":
+        paired_role = "bill" if file_role == "receipt" else "receipt"
+        
+        # Look for the other matching role for the same day on this claim
+        paired_upload = db.execute(
+            text("""
+                SELECT upload_id, status, ocr_merchant, ocr_date, ocr_amount
+                FROM claim_uploads
+                WHERE claim_id = :claim_id
+                  AND day_number = :day_number
+                  AND category = 'food'
+                  AND upload_id != :current_upload_id
+                  AND file_role = :paired_role
+                LIMIT 1
+            """),
+            {
+                "claim_id": upload["claim_id"],
+                "day_number": day_number,
+                "current_upload_id": upload["upload_id"],
+                "paired_role": paired_role
+            }
+        ).mappings().first()
+
+        # If the other file exists and has completed validation
+        if paired_upload and paired_upload["status"] not in ("PENDING", "SYSTEM_PENDING"):
+            
+            # Compare basic properties
+            curr_merchant = (ocr.get("merchant") or "").strip().lower()
+            pair_merchant = (paired_upload["ocr_merchant"] or "").strip().lower()
+            merchant_match = curr_merchant == pair_merchant or curr_merchant in pair_merchant or pair_merchant in curr_merchant
+
+            curr_date = str(ocr.get("ocr_date") or "")
+            pair_date = str(paired_upload["ocr_date"] or "")
+            date_match = curr_date == pair_date
+
+            curr_amount = ocr.get("amount")
+            pair_amount = paired_upload["ocr_amount"]
+            amount_match = False
+            if curr_amount is not None and pair_amount is not None:
+                amount_match = abs(float(curr_amount) - float(pair_amount)) < 0.01
+
+            # If there's a discrepancy, flag for manual review
+            if not (merchant_match and date_match and amount_match):
+                return {
+                    **base,
+                    "status": "REVIEW",
+                    "review_reason": (
+                        f"Discrepancy detected between Food receipt and optional bill. "
+                        f"Receipt: Merchant='{ocr.get('merchant')}', Date={ocr.get('ocr_date')}, Amount={ocr.get('amount')}. "
+                        f"Bill: Merchant='{paired_upload['ocr_merchant']}', Date={paired_upload['ocr_date']}, Amount={paired_upload['ocr_amount']}."
+                    ),
+                }
 
     # ---------------------------------------------------------
     # Step 5: Expense categorization
@@ -390,7 +510,8 @@ def _write_upload_verdict(upload_id: int, verdict: dict, db: Session) -> None:
                 status            = :status,
                 rejection_reason  = :rejection_reason,
                 review_reason     = :review_reason,
-                processed_at      = :processed_at
+                processed_at      = :processed_at,
+                ocr_invoice_number = :ocr_invoice_number 
             WHERE upload_id = :upload_id
         """),
         {
@@ -407,6 +528,7 @@ def _write_upload_verdict(upload_id: int, verdict: dict, db: Session) -> None:
             "rejection_reason": verdict.get("rejection_reason"),
             "review_reason":    verdict.get("review_reason"),
             "processed_at":     datetime.now(timezone.utc),
+            "ocr_invoice_number": verdict.get("ocr_invoice_number"), 
         }
     )
     db.commit()

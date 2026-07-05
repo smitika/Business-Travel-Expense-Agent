@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { day_details } from "../api/client";
+import { day_details, create_ask_ai_session } from "../api/client"; // Added API import for ask ai
+import ChatWindow from "../components/ChatWindow"; // Import your reused ChatWindow component
 
 const DOC_STATUS_STYLES = {
   approved: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
@@ -65,15 +66,16 @@ export default function DayDetailsPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Instantly render date if passed through React Router state
-  const dayMeta = location.state?.day || null;
-
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
   // Controls inline image review lightbox modal
   const [activeReceiptUrl, setActiveReceiptUrl] = useState(null);
+
+  // Controls active chat session (opens the slide-over chat pane)
+  const [activeChatSession, setActiveChatSession] = useState(null);
+  const [loadingSessionId, setLoadingSessionId] = useState(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -82,7 +84,6 @@ export default function DayDetailsPage() {
       setLoading(true);
       setError(null);
       try {
-        // Calls the backend endpoint: /claims/{claimId}/days/{dayNumber}/details
         const result = await day_details(claimId, dayNumber);
         if (isMounted) setData(result);
       } catch (err) {
@@ -97,6 +98,22 @@ export default function DayDetailsPage() {
       isMounted = false;
     };
   }, [claimId, dayNumber]);
+
+  // Handles clicking the "Ask AI" button
+  const handleAskAI = async (uploadId) => {
+    if (loadingSessionId) return;
+    setLoadingSessionId(uploadId);
+
+    try {
+      // Calls `/create-ask-ai-session` on your backend api
+      const session = await create_ask_ai_session(uploadId, 1);
+      setActiveChatSession(session);
+    } catch (err) {
+      alert("Failed to start Ask AI session. Please try again.");
+    } finally {
+      setLoadingSessionId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -131,7 +148,7 @@ export default function DayDetailsPage() {
   const { date, summary, documents } = data;
 
   return (
-    <div className="min-h-full bg-slate-50 px-6 py-8 sm:px-10">
+    <div className="min-h-full bg-slate-50 px-6 py-8 sm:px-10 relative overflow-x-hidden">
       <div className="mx-auto max-w-5xl">
         
         {/* Navigation & Back Action */}
@@ -192,7 +209,7 @@ export default function DayDetailsPage() {
                     <th scope="col" className="px-6 py-3.5">Amount</th>
                     <th scope="col" className="px-6 py-3.5">Status</th>
                     <th scope="col" className="px-6 py-3.5">OCR Validation Check</th>
-                    <th scope="col" className="px-6 py-3.5"><span className="sr-only">Actions</span></th>
+                    <th scope="col" className="px-6 py-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white text-sm">
@@ -236,19 +253,41 @@ export default function DayDetailsPage() {
                             <span className="text-xs italic text-slate-400">Passed policy limits</span>
                           )}
                         </td>
-                        {/* Actions (Image Preview Click) */}
+                        {/* Actions (Review Receipt, Ask AI, Reapply) */}
                         <td className="whitespace-nowrap px-6 py-4 text-right">
-                          {doc.file_url ? (
+                          <div className="flex items-center justify-end gap-2">
+                            
+                            {/* Review Receipt */}
+                            {doc.file_url ? (
+                              <button
+                                type="button"
+                                onClick={() => setActiveReceiptUrl(doc.file_url)}
+                                className="text-xs font-semibold text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded px-3 py-1.5 bg-white transition-all cursor-pointer shadow-xs"
+                              >
+                                Review Receipt
+                              </button>
+                            ) : (
+                              <span className="text-xs italic text-slate-300">No Image</span>
+                            )}
+
+                            {/* Ask AI (Enabled only for Rejected/Review) */}
                             <button
                               type="button"
-                              onClick={() => setActiveReceiptUrl(doc.file_url)}
-                              className="text-xs font-semibold text-slate-900 hover:text-slate-600 border border-slate-200 hover:border-slate-300 rounded px-3 py-1.5 bg-white transition-all cursor-pointer shadow-xs"
+                              onClick={() => handleAskAI(doc.upload_id)}
+                              disabled={!hasActionableAlert || loadingSessionId !== null}
+                              className={`inline-flex items-center gap-1 text-xs font-semibold border rounded px-3 py-1.5 transition-all
+                                ${hasActionableAlert && loadingSessionId === null
+                                  ? "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 cursor-pointer"
+                                  : "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+                                }`}
                             >
-                              Review Receipt
+                              {loadingSessionId === doc.upload_id ? (
+                                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-indigo-700 border-t-transparent" />
+                              ) : (
+                                "✨ Ask AI"
+                              )}
                             </button>
-                          ) : (
-                            <span className="text-xs italic text-slate-300">No Image</span>
-                          )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -271,9 +310,8 @@ export default function DayDetailsPage() {
         >
           <div 
             className="relative max-w-3xl w-full bg-white rounded-xl shadow-2xl overflow-hidden p-4"
-            onClick={(e) => e.stopPropagation()} // Prevents closing lightbox when clicking image container
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <h3 className="text-sm font-semibold text-slate-900">Receipt Viewer</h3>
               <button
@@ -286,7 +324,6 @@ export default function DayDetailsPage() {
               </button>
             </div>
             
-            {/* Image Container */}
             <div className="flex justify-center items-center bg-slate-50 rounded-lg overflow-hidden max-h-[70vh]">
               <img 
                 src={activeReceiptUrl} 
@@ -298,6 +335,19 @@ export default function DayDetailsPage() {
                 }}
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- SLIDING CHAT PANEL DRAWER ---------------- */}
+      {activeChatSession && (
+        <div className="min-h-screen bg-[#111827] text-white flex flex-col">
+          <div className="flex-1 flex flex-col overflow-hidden">
+              <ChatWindow
+                sessionData={activeChatSession} // 1. Fixed state reference
+                storageKey={activeChatSession.session_id} // 2. Isolated storage history per session
+                onEndSession={() => setActiveChatSession(null)} // 3. Cleanly exits full screen
+              />
           </div>
         </div>
       )}

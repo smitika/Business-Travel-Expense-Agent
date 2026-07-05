@@ -15,6 +15,8 @@ export default function EmployeeDashboard() {
     const [loadingTravel, setLoadingTravel] = useState(false);
     const [error, setError] = useState("");
 
+    const emp_name = localStorage.getItem("emp_name");
+
     const handleUploadModalClose = () => {
         setShowUploadModal(false);
         setStartDate("");
@@ -49,8 +51,8 @@ export default function EmployeeDashboard() {
                 },
             });
         } catch (err) {
-            console.error(err);
-            setError("Validation failed. Please try again.");
+            const errorMsg = err.response?.data?.detail || "Validation failed. Please try again.";
+            setError(errorMsg);
         } finally {
             setLoadingValidate(false);
         }
@@ -76,6 +78,7 @@ export default function EmployeeDashboard() {
             {/* NAVBAR */}
             <nav className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 shadow-sm">
                 <h1 className="text-lg font-semibold text-slate-800 tracking-wide">Employee Portal</h1>
+                <h1 className="text-lg font-semibold text-slate-800 tracking-wide">Welcome {emp_name}!</h1>
                 <button
                     onClick={() => navigate("/")}
                     className="px-4 py-2 rounded-md bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition text-sm"
@@ -91,22 +94,7 @@ export default function EmployeeDashboard() {
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
-
-                    {/* CARD 1 — Claim Queries */}
-                    <button
-                        onClick={() => navigate("/employee-dashboard/claim-chat")}
-                        className="group bg-white border border-slate-200 hover:border-blue-400 rounded-2xl p-7 text-left transition-all duration-200 hover:shadow-md"
-                    >
-                        <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center mb-5 group-hover:bg-blue-100 transition">
-                            <FileText size={22} className="text-blue-600" />
-                        </div>
-                        <h2 className="text-base font-semibold text-slate-800 mb-2">Post-Travel Claims</h2>
-                        <p className="text-sm text-slate-500 leading-relaxed">
-                            Submit or check reimbursement eligibility for a completed trip.
-                        </p>
-                    </button>
-
-                    {/* CARD 2 — General Travel */}
+                    {/* CARD 1 — General Travel */}
                     <button
                         onClick={handleTravelSession}
                         disabled={loadingTravel}
@@ -124,7 +112,7 @@ export default function EmployeeDashboard() {
                         </p>
                     </button>
 
-                    {/* CARD 3 — Upload Claim */}
+                    {/* CARD 2 — Upload Claim */}
                     <button
                         onClick={() => setShowUploadModal(true)}
                         className="group bg-white border border-slate-200 hover:border-violet-400 rounded-2xl p-7 text-left transition-all duration-200 hover:shadow-md"
@@ -138,7 +126,7 @@ export default function EmployeeDashboard() {
                         </p>
                     </button>
 
-                    {/* CARD 4 — My Claims */}
+                    {/* CARD 3 — My Claims */}
                     <button
                         onClick={() => navigate("/employee-dashboard/my-claims")}
                         className="group bg-white border border-slate-200 hover:border-amber-400 rounded-2xl p-7 text-left transition-all duration-200 hover:shadow-md"

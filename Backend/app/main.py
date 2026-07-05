@@ -25,6 +25,7 @@ from app.core.auth import get_current_user, get_current_admin
 from app.services.claim_validator import run_claim_validation
 from app.services.check_policy_metadata import is_policy_extracted
 from app.services.rollup_claim_status import rollup_claim_status
+from app.services.structured_context_builder import get_ask_ai_context
 from app.schemas.claim_schemas import UploadMetadata
 import logging
 import json
@@ -70,6 +71,10 @@ class EmployeeClaimSessionRequest(BaseModel):
     travel_start: str
     travel_end: str
 
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -255,39 +260,6 @@ async def chat(request: ChatRequest, db: Session = Depends(get_db)):
     "retrieved_chunks": llm_result.get("retrieved_chunks", []),
     "retrieval_confidence": llm_result.get("retrieval_confidence", None)
 }
-
-@app.post("/employee-claim-session")
-async def create_employee_claim_session(request: EmployeeClaimSessionRequest, db: Session = Depends(get_db)):
-    policy = db.execute(
-        text("""SELECT policy_id, file_path, vector_path
-        FROM policies
-        WHERE is_deleted = FALSE
-          AND :travel_start >= valid_from
-          AND :travel_end <= valid_till
-        ORDER BY valid_from DESC
-        LIMIT 1"""),{"travel_start": request.travel_start, "travel_end":request.travel_end}).mappings().first()
-
-    if not policy:
-        raise HTTPException(status_code=404, detail="No active policy found")
-
-    vector_path = policy["vector_path"]
-    file_path = policy["file_path"]
-    policy_id = policy["policy_id"]
-
-    if not vector_path:
-        print("Starting ingestion...")
-        vector_path = ingest_file(file_path,policy_id)
-        print("Ingestion complete!")
-        db.execute(text("""UPDATE policies SET ingested = TRUE , vector_path = :vector_path WHERE policy_id = :policy_id"""),{"vector_path": vector_path, "policy_id":policy_id})
-
-    session_id = str(uuid.uuid4())
-    return {
-        "session_id": session_id,
-        "policy_id": policy_id,
-        "vector_path": vector_path,
-        "chat_mode": "claim_query",
-    }
-
 
 @app.post("/employee-travel-session")
 async def create_employee_travel_session(db: Session = Depends(get_db)):
@@ -506,7 +478,19 @@ def validate_travel(req: TravelValidationRequest, db: Session = Depends(get_db),
         }
     start: date = travel.travel_start_date
     end: date = travel.travel_end_date
+    travel_id = travel.id
     duration_days = (end - start).days + 1
+
+    existing_claim = db.execute(
+        text("SELECT claim_id, status FROM claims WHERE travel_id = :travel_id"),
+        {"travel_id": travel_id}
+    ).mappings().first()
+
+    if existing_claim:
+        raise HTTPException(
+            status_code=400,
+            detail="You have already submitted a claim for this travel request. Please check 'My Claims' to reapply for specific rejected uploads if permitted."
+        )
 
     return {
         "valid": True,
@@ -827,13 +811,11 @@ def get_flagged_receipt_details(
                 u.ocr_merchant,
                 u.ocr_amount,
                 u.ocr_currency,
-                u.ocr_amount_inr, -- Selecting corrected column name
+                u.ocr_amount_inr,
                 u.ocr_date,
                 u.detected_doc_type,
-                -- Policy general info
                 p.policy_id,
                 p.policy_name,
-                -- Travel Request fields
                 tr.id AS travel_id,
                 tr.destination,
                 tr.travel_start_date,
@@ -843,7 +825,7 @@ def get_flagged_receipt_details(
             JOIN claims c ON u.claim_id = c.claim_id
             JOIN users usr ON c.emp_id = usr.emp_id
             JOIN policies p ON c.policy_version_id = p.policy_id
-            LEFT JOIN travel_request tr ON c.travel_id = tr.id
+            LEFT JOIN travel_requests tr ON c.travel_id = tr.id
             WHERE u.upload_id = :upload_id
         """),
         {"upload_id": upload_id}
@@ -864,7 +846,7 @@ def get_flagged_receipt_details(
     # NOTE: Maps 'catrgory' alias to standard 'category' to protect frontend execution
     policy_limits = db.execute(
         text("""
-            SELECT id, policy_version_id, travel_type, catrgory AS category, daily_limit, currency 
+            SELECT id, policy_version_id, travel_type, category, daily_limit, currency 
             FROM policy_limits 
             WHERE policy_version_id = :pid
         """),
@@ -874,7 +856,7 @@ def get_flagged_receipt_details(
     # 4. Fetch all policy items associated with this policy version
     policy_items = db.execute(
         text("""
-            SELECT id, policy_version_id, travel_type, category, item_name, isallowed, per_item_limit, currency, notes 
+            SELECT id, policy_version_id, travel_type, category, item_name, is_allowed, per_item_limit, currency, notes 
             FROM policy_items 
             WHERE policy_version_id = :pid
         """),
@@ -974,3 +956,152 @@ def reject_upload(
         "claim_id": claim_id,
         "new_claim_status": new_claim_status
     }
+
+class AskAiSessionRequest(BaseModel):
+    upload_id: int
+    emp_id: int
+@app.post("/create-ask-ai-session")
+async def create_ask_ai_session(request: AskAiSessionRequest, db: Session = Depends(get_db)):
+    # 1. Fetch structured database context for the specific upload
+    structured_context, policy_id, status = get_ask_ai_context(request.upload_id, db)
+    
+    if not structured_context:
+        raise HTTPException(
+            status_code=404, 
+            detail="Details for this receipt upload or policy could not be retrieved."
+        )
+    
+    # 2. Initialize a transient thread ID for LangGraph memory
+    session_id = str(uuid.uuid4())
+    graph.update_state(
+        config={"configurable": {"thread_id": session_id}},
+        values={
+            "structured_context": structured_context,
+            "chat_mode": "ask_ai_receipt",
+            "session_id": session_id,
+            "policy_id": policy_id,
+            "vector_path": ""
+        }
+    )
+    status_lower = (status or "").lower()
+    if "reject" in status_lower:
+        first_question = "Explain why this upload was rejected and if I can reapply."
+    elif "flag" in status_lower or "review" in status_lower:
+        first_question = "Explain why this upload was flagged for review and if I can reapply."
+    else:
+        # Fallback in case status is unexpected
+        first_question = "Explain the current status of this upload and if I can reapply."
+
+    initial_state = {
+        "session_id": session_id,
+        "policy_id": policy_id,
+        "chat_mode": "ask_ai_receipt",
+        "user_message": first_question,
+        "vector_path": "",  # Empty for non-RAG run
+        "structured_context": structured_context
+    }
+
+    # 4. Invoke the LangGraph runtime to generate the initial explanation
+    llm_result = graph.invoke(
+        initial_state,
+        config={
+            "configurable": {
+                "thread_id": session_id
+            }
+        }
+    )
+
+    # 5. Return session details along with the auto-generated response
+    return {
+        "session_id": session_id,
+        "policy_id": policy_id,
+        "chat_mode": "ask_ai_receipt",
+        "first_question": first_question,
+        "first_response": llm_result.get("final_response"),
+    }
+
+
+class ArchivePolicyRequest(BaseModel):
+    force: bool = False
+
+@app.post("/admin/policies/{policy_id}/archive")
+async def archive_policy(policy_id: int, request: ArchivePolicyRequest, db: Session = Depends(get_db)):
+    # 1. Fetch main policy details
+    policy_query = text("""
+        SELECT policy_id, policy_name, is_active 
+        FROM policies 
+        WHERE policy_id = :policy_id AND is_deleted = FALSE
+    """)
+    policy = db.execute(policy_query, {"policy_id": policy_id}).mappings().first()
+    
+    if not policy:
+        raise HTTPException(status_code=404, detail="Policy not found or already deleted")
+
+    policy_name = policy["policy_name"]
+    is_active = policy["is_active"]
+
+    # 2. Check if policy has configured rules in policy_items or policy_limits
+    items_count = db.execute(
+        text("SELECT COUNT(*) as count FROM policy_items WHERE policy_version_id = :policy_id"),
+        {"policy_id": policy_id}
+    ).mappings().first()["count"]
+
+    limits_count = db.execute(
+        text("SELECT COUNT(*) as count FROM policy_limits WHERE policy_version_id = :policy_id"),
+        {"policy_id": policy_id}
+    ).mappings().first()["count"]
+
+    has_validation_rules = (items_count > 0 or limits_count > 0)
+
+    # 3. Dynamic logic checking Case 1, Case 2, and Case 3
+    if not request.force:
+        # Case 1 & Case 2 combined: Active policy and has validation rules
+        if is_active and has_validation_rules:
+            return {
+                "status": "requires_confirmation",
+                "message": f"Policy '{policy_name}' is currently ACTIVE and has rules used for claim validation. Do you want to archive it anyway?"
+            }
+        # Case 1: Active policy, but no validation rules
+        elif is_active and not has_validation_rules:
+            return {
+                "status": "requires_confirmation",
+                "message": f"Policy '{policy_name}' is currently ACTIVE. Do you want to archive it anyway?"
+            }
+        # Case 2: Inactive policy, but contains validation rules
+        elif not is_active and has_validation_rules:
+            return {
+                "status": "requires_confirmation",
+                "message": f"Policy '{policy_name}' is currently used for claim validation (has rules configured). Do you want to archive it anyway?"
+            }
+
+    # Case 3 (or if admin confirmed via force=True): Execute archiving and cascading deletions
+    try:
+        # Update policy flags and timestamps
+        db.execute(
+            text("""
+                UPDATE policies 
+                SET is_active = FALSE, is_deleted = TRUE, deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+                WHERE policy_id = :policy_id
+            """),
+            {"policy_id": policy_id}
+        )
+
+        # Cascading deletion of metadata rules from limits and items tables
+        db.execute(
+            text("DELETE FROM policy_items WHERE policy_version_id = :policy_id"),
+            {"policy_id": policy_id}
+        )
+        db.execute(
+            text("DELETE FROM policy_limits WHERE policy_version_id = :policy_id"),
+            {"policy_id": policy_id}
+        )
+
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"Policy '{policy_name}' archived successfully, and associated validation metadata deleted."
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database execution error: {str(e)}")

@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const API = "https://business-travel-expense-agent-new.onrender.com";
+//"http://localhost:8000"
 axios.interceptors.request.use((config) => {
     const token = localStorage.getItem("token");
 
@@ -91,11 +92,6 @@ export const create_admin_session = async(data)=>{
 
 export const chat =async(data)=>{
   const res = await axios.post(`${API}/chat`,data);
-  return res.data;
-}
-
-export const create_employee_claim_session = async (data) => {
-  const res = await axios.post(`${API}/employee-claim-session`, data);
   return res.data;
 }
 
@@ -195,5 +191,15 @@ export const approve_flagged_receipt = async (upload_id, approval_reason) => {
 
 export const reject_flagged_receipt = async (upload_id, rejection_reason) => {
   const res = await axios.post(`${API}/admin/flagged-receipts/${upload_id}/reject`, { rejection_reason });
+  return res.data;
+};
+
+export const create_ask_ai_session = async (upload_id, emp_id) => {
+  const res = await axios.post(`${API}/create-ask-ai-session`, { upload_id, emp_id });
+  return res.data;
+};
+
+export const archive_policy = async (policy_id, force = false) => {
+  const res = await axios.post(`${API}/admin/policies/${policy_id}/archive`, { force });
   return res.data;
 };

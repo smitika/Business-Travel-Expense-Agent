@@ -6,7 +6,6 @@ import AdminDashboard from "./pages/admin_dashboard";
 import ManagePolicies from "./pages/manage_policies";
 import Test_Chatbot from "./pages/Test_Chatbot";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
-import EmployeeClaimChat from "./pages/Employee_claim_chat";
 import EmployeeTravelChat from "./pages/Employee_travel_chat";
 import EmployeeLogin from "./pages/employee_Login";
 
@@ -19,6 +18,7 @@ import EmployeeClaimDetail from "./pages/Employee_claim_detail";
 import DayDetailsPage from "./pages/Employee_day_detail";
 import PolicyMetadataPage from "./pages/populate_policy";
 import FlaggedReceiptsPage from "./pages/Flagged_receipts";
+import FlaggedReceiptDetailsPage from "./pages/Flagged_receipt_details";
 
 export default function App() {
   return (
@@ -67,17 +67,6 @@ export default function App() {
           <ProtectedRoute>
             <RoleRoute role="employee">
               <EmployeeDashboard />
-            </RoleRoute>
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/employee-dashboard/claim-chat"
-        element={
-          <ProtectedRoute>
-            <RoleRoute role="employee">
-              <EmployeeClaimChat />
             </RoleRoute>
           </ProtectedRoute>
         }
@@ -156,6 +145,17 @@ export default function App() {
         </ProtectedRoute>
     }
     />
+    <Route
+    path="/admin/flagged-receipts/:uploadId"
+    element={
+        <ProtectedRoute>
+            <RoleRoute role="admin">
+                <FlaggedReceiptDetailsPage /> 
+            </RoleRoute>
+        </ProtectedRoute>
+    }
+    />
+
     </Routes>
 
   );

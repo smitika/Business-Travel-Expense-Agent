@@ -5,7 +5,7 @@ import { submit_claim } from "../api/client";
 
 // Sub-components
 import StepBar from "../components/StepBar";
-import DayForm, {CATEGORIES} from "../components/DayForm";
+import DayForm from "../components/DayForm";
 import ReviewStep, { formatDate, addDays } from "../components/ReviewStep";
 
 export default function UploadClaim() {
@@ -31,29 +31,53 @@ export default function UploadClaim() {
     }
 
     // State Hooks
-    const [allDays, setAllDays] = useState(() => Array.from({ length: duration_days }, () => ({})));
+    // Food structure: { receipt: File | null, bill: File | null, description: "" }
+    // Standard structure: { file: File, description: "" }
+    const [allDays, setAllDays] = useState(() => 
+        Array.from({ length: duration_days }, () => ({
+            food: [],      // array of { receipt: File, bill: File | null, description: "" }
+            transport: [], // array of { file: File, description: "" }
+            misc: []       // array of { file: File, description: "" }
+        }))
+    );
     const [currentDay, setCurrentDay] = useState(0);
-    // step: 1 = day forms, 2 = review
     const [step, setStep] = useState(1);
     const [submitting, setSubmitting] = useState(false);
 
     const currentDayStr = addDays(start_date, currentDay);
 
-    // ── upload handlers (Fixed State Updates) ─────────────────────────────────
+    // Calculate total Miscellaneous count across the entire claim (all days)
+    const totalMiscCount = allDays.reduce((sum, day) => sum + (day.misc || []).length, 0);
 
-    const handleAddFiles = (category, files) => {
-        const newEntries = files.map(f => ({ file: f, description: "" }));
+    // ── Standard Category Handlers (Transport & Misc) ────────────────────────
+
+    const handleAddFilesStandard = (category, files) => {
         setAllDays(prev => {
             const next = [...prev];
+            const currentList = next[currentDay][category] || [];
+
+            if (category === "transport") {
+                if (currentList.length + files.length > 5) {
+                    alert("Maximum of 5 local transport receipts allowed per day.");
+                    return prev;
+                }
+            } else if (category === "misc") {
+                if (totalMiscCount + files.length > 3) {
+                    alert("Maximum of 3 miscellaneous claims allowed across the entire trip.");
+                    return prev;
+                }
+            }
+
+            const newEntries = files.map(f => ({ file: f, description: "" }));
             next[currentDay] = {
                 ...next[currentDay],
-                [category]: [...(next[currentDay][category] || []), ...newEntries]
+                [category]: [...currentList, ...newEntries]
             };
             return next;
         });
     };
 
-    const handleRemoveFile = (category, index) => {
+    const handleRemoveFileStandard = (category, index) => {
         setAllDays(prev => {
             const next = [...prev];
             next[currentDay] = {
@@ -64,7 +88,7 @@ export default function UploadClaim() {
         });
     };
 
-    const handleDescChange = (category, index, value) => {
+    const handleDescChangeStandard = (category, index, value) => {
         setAllDays(prev => {
             const next = [...prev];
             const updatedCategory = [...(next[currentDay][category] || [])];
@@ -80,7 +104,84 @@ export default function UploadClaim() {
         });
     };
 
-    // ── navigation ───────────────────────────────────────────────────────────
+    // ── Food Category Handlers (Dual File Slots) ─────────────────────────────
+
+    const handleAddFoodSlot = () => {
+        setAllDays(prev => {
+            const next = [...prev];
+            const foodList = next[currentDay].food || [];
+            if (foodList.length >= 4) {
+                alert("Maximum of 4 food expense entries allowed per day.");
+                return prev;
+            }
+            next[currentDay] = {
+                ...next[currentDay],
+                food: [...foodList, { receipt: null, bill: null, description: "" }]
+            };
+            return next;
+        });
+    };
+
+    const handleUploadFoodFile = (slotIndex, role, file) => {
+        setAllDays(prev => {
+            const next = [...prev];
+            const foodList = [...(next[currentDay].food || [])];
+            foodList[slotIndex] = {
+                ...foodList[slotIndex],
+                [role]: file
+            };
+            next[currentDay] = {
+                ...next[currentDay],
+                food: foodList
+            };
+            return next;
+        });
+    };
+
+    const handleRemoveFoodFile = (slotIndex, role) => {
+        setAllDays(prev => {
+            const next = [...prev];
+            const foodList = [...(next[currentDay].food || [])];
+            foodList[slotIndex] = {
+                ...foodList[slotIndex],
+                [role]: null
+            };
+            next[currentDay] = {
+                ...next[currentDay],
+                food: foodList
+            };
+            return next;
+        });
+    };
+
+    const handleRemoveFoodSlot = (slotIndex) => {
+        setAllDays(prev => {
+            const next = [...prev];
+            next[currentDay] = {
+                ...next[currentDay],
+                food: (next[currentDay].food || []).filter((_, i) => i !== slotIndex)
+            };
+            return next;
+        });
+    };
+
+    const handleFoodDescChange = (slotIndex, value) => {
+        setAllDays(prev => {
+            const next = [...prev];
+            const foodList = [...(next[currentDay].food || [])];
+            foodList[slotIndex] = {
+                ...foodList[slotIndex],
+                description: value
+            };
+            next[currentDay] = {
+                ...next[currentDay],
+                food: foodList
+            };
+            return next;
+        });
+    };
+
+    // ── Navigation ──────────────────────────────────────────────────────────
 
     const handleNext = () => {
         if (currentDay < duration_days - 1) {
@@ -101,28 +202,65 @@ export default function UploadClaim() {
         }
     };
 
-    // ── submit ───────────────────────────────────────────────────────────────
+    // ── Submit payload compilation ───────────────────────────────────────────
 
     const handleSubmit = async () => {
         try {
             setSubmitting(true);
 
-            const formData  = new FormData();
+            const formData = new FormData();
             const metaArray = [];
 
             formData.append("travel_id", travel_id);
 
             allDays.forEach((dayUploads, dayIndex) => {
                 const claimDate = addDays(start_date, dayIndex);
-                CATEGORIES.forEach(cat => {
-                    (dayUploads[cat.key] || []).forEach(u => {
-                        formData.append("files", u.file);
+
+                // 1. Process Food (Split receipt and bill, assign file_role)
+                (dayUploads.food || []).forEach(slot => {
+                    if (slot.receipt) {
+                        formData.append("files", slot.receipt);
                         metaArray.push({
-                            day_number:   dayIndex + 1,
-                            claim_date:   claimDate,
-                            category:     cat.key,
-                            description:  u.description || null,
+                            day_number: dayIndex + 1,
+                            claim_date: claimDate,
+                            category: "food",
+                            description: slot.description || null,
+                            file_role: "receipt"
                         });
+                    }
+                    if (slot.bill) {
+                        formData.append("files", slot.bill);
+                        metaArray.push({
+                            day_number: dayIndex + 1,
+                            claim_date: claimDate,
+                            category: "food",
+                            description: slot.description || null,
+                            file_role: "bill"
+                        });
+                    }
+                });
+
+                // 2. Process Transport (Standard file_role is "receipt")
+                (dayUploads.transport || []).forEach(u => {
+                    formData.append("files", u.file);
+                    metaArray.push({
+                        day_number: dayIndex + 1,
+                        claim_date: claimDate,
+                        category: "transport",
+                        description: u.description || null,
+                        file_role: "receipt"
+                    });
+                });
+
+                // 3. Process Misc (Standard file_role is "receipt")
+                (dayUploads.misc || []).forEach(u => {
+                    formData.append("files", u.file);
+                    metaArray.push({
+                        day_number: dayIndex + 1,
+                        claim_date: claimDate,
+                        category: "misc",
+                        description: u.description || null,
+                        file_role: "receipt"
                     });
                 });
             });
@@ -140,14 +278,13 @@ export default function UploadClaim() {
         }
     };
 
-    // ── render constants ─────────────────────────────────────────────────────
+    // ── Render ───────────────────────────────────────────────────────────────
 
     const stepBarCurrent = step === 2 ? 2 : 1;
     const dayLabel = `Day ${currentDay + 1} — ${formatDate(currentDayStr)}`;
 
     return (
         <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
-
             {/* NAVBAR */}
             <nav className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 shadow-sm">
                 <h1 className="text-lg font-semibold text-slate-800 tracking-wide">Upload Claim</h1>
@@ -162,7 +299,6 @@ export default function UploadClaim() {
             {/* CONTENT */}
             <div className="flex-1 flex flex-col items-center px-4 py-10">
                 <div className="w-full max-w-2xl">
-
                     {/* Trip summary pill */}
                     <div className="flex items-center justify-center mb-6">
                         <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-1.5 text-xs text-slate-500 shadow-sm">
@@ -180,7 +316,7 @@ export default function UploadClaim() {
                         currentDayLabel={step === 1 ? dayLabel : null}
                     />
 
-                    {/* Day progress dots (only during fill step) */}
+                    {/* Day progress dots */}
                     {step === 1 && duration_days > 1 && (
                         <div className="flex items-center justify-center gap-2 mb-6">
                             {Array.from({ length: duration_days }).map((_, i) => (
@@ -214,9 +350,20 @@ export default function UploadClaim() {
                                     dayIndex={currentDay}
                                     dateStr={currentDayStr}
                                     dayUploads={allDays[currentDay]}
-                                    onAddFiles={handleAddFiles}
-                                    onRemoveFile={handleRemoveFile}
-                                    onDescChange={handleDescChange}
+                                    totalMiscCount={totalMiscCount}
+                                    
+                                    // Standard Handlers
+                                    onAddFiles={handleAddFilesStandard}
+                                    onRemoveFile={handleRemoveFileStandard}
+                                    onDescChange={handleDescChangeStandard}
+
+                                    // Food Handlers
+                                    onAddFoodSlot={handleAddFoodSlot}
+                                    onUploadFoodFile={handleUploadFoodFile}
+                                    onRemoveFoodFile={handleRemoveFoodFile}
+                                    onRemoveFoodSlot={handleRemoveFoodSlot}
+                                    onFoodDescChange={handleFoodDescChange}
+
                                     onNext={handleNext}
                                     onBack={handleBack}
                                     isLastDay={currentDay === duration_days - 1}

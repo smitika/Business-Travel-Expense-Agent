@@ -23,6 +23,7 @@ Do NOT include any extra keys.
 Return exactly this schema:
 
 {{
+  "invoice_number" : <string or null>,
   "merchant": "<string or null>",
   "date": "YYYY-MM-DD or null",
   "amount": <number or null>,
@@ -38,21 +39,26 @@ Return exactly this schema:
 
 Extraction Rules:
 
-1. merchant
+1. invoice_number
+- Every receipt has a unique invoice number or invoice id
+- Extract this invoice number
+- Return null if invoice number not found
+
+2. merchant
 - Name of the merchant, restaurant, hotel, vendor, taxi operator, toll operator, etc.
 - Return null if uncertain.
 
-2. date
+3. date
 - Extract ONLY the transaction/payment date.
 - Format strictly as YYYY-MM-DD.
 - Return null if no valid date exists.
 
-3. amount
+4. amount
 - Extract the FINAL payable amount.
 - Ignore subtotals, taxes and discounts unless they are the final total.
 - Return null if uncertain.
 
-4. currency
+5. currency
 - Return ISO currency code.
 - Examples:
   INR
@@ -63,7 +69,7 @@ Extraction Rules:
   AED
 - Default to INR if not mentioned.
 
-5. detected_doc_type
+6. detected_doc_type
 Choose exactly ONE:
 
 receipt
@@ -77,7 +83,7 @@ boarding_pass
 train_ticket
 unknown
 
-6. line_items
+7. line_items
 - Return ONLY item/service names.
 - Do NOT include quantities.
 - Do NOT include prices.
@@ -90,7 +96,7 @@ unknown
 
 If no individual items exist, return [].
 
-7. expense_summary
+8. expense_summary
 Write ONE factual sentence describing what the document represents.
 
 Examples:
@@ -102,7 +108,7 @@ Examples:
 
 Do NOT mention reimbursement or policy.
 
-8. confidence
+9. confidence
 Return:
 high
 medium
@@ -155,6 +161,7 @@ OCR Text:
         "line_items",
         "expense_summary",
         "confidence",
+        "invoice_number",
     }
 
     missing = required_keys - parsed.keys()

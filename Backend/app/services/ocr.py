@@ -61,6 +61,7 @@ def extract_ocr_data(file_bytes: bytes) -> dict:
             "expense_summary": None,
             "ocr_raw_text": "",
             "confidence": "low",
+            "invoice_number": None,
         }
 
     try:
@@ -78,8 +79,13 @@ def extract_ocr_data(file_bytes: bytes) -> dict:
             "expense_summary": None,
             "ocr_raw_text": raw_text,
             "confidence": "low",
+            "invoice_number": None,
         }
-
+    invoice_number = llm_data.get("invoice_number")
+    if invoice_number:
+        invoice_number = str(invoice_number).strip()
+    else:
+        invoice_number = None
     # ---------------- Merchant ----------------
 
     merchant = llm_data.get("merchant")
@@ -151,4 +157,5 @@ def extract_ocr_data(file_bytes: bytes) -> dict:
         "expense_summary": expense_summary,
         "ocr_raw_text": raw_text,
         "confidence": confidence,
+        "invoice_number": invoice_number,
     }

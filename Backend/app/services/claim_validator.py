@@ -16,6 +16,7 @@ from app.services.match_receipt_description import description_matches_receipt
 logger = logging.getLogger(__name__)
 
 from app.database.db import SessionLocal
+
 # ---------------------------------------------------------------------------
 # Entry point (called by BackgroundTasks in /submit-claim)
 # ---------------------------------------------------------------------------
@@ -66,7 +67,56 @@ def run_claim_validation(claim_id: int) -> None:
         policy_daily_limits = load_policy_limits(policy_version_id, travel_type, db)
         disallowed_items    = load_disallowed_items(policy_version_id, travel_type, db)
 
-        # 4. Fetch all PENDING uploads
+        # 4a. REJECT: Handle non-food bills (bills are only supported/optional for Food category)
+        unsupported_bills = db.execute(
+            text("""
+                SELECT upload_id, category, day_number
+                FROM claim_uploads
+                WHERE claim_id = :claim_id
+                  AND status = 'PENDING'
+                  AND file_role = 'bill'
+                  AND category != 'food'
+            """),
+            {"claim_id": claim_id}
+        ).mappings().all()
+
+        for bill in unsupported_bills:
+            verdict = {
+                **_empty_verdict(),
+                "status": "REJECTED",
+                "rejection_reason": f"Bills are not supported for category '{bill['category']}'. Only receipts are accepted."
+            }
+            _write_upload_verdict(bill["upload_id"], verdict, db)
+
+        # 4b. REJECT: Food bills that don't have a matching Food receipt for the same day
+        unmatched_food_bills = db.execute(
+            text("""
+                SELECT upload_id, day_number
+                FROM claim_uploads b
+                WHERE b.claim_id = :claim_id
+                  AND b.status = 'PENDING'
+                  AND b.file_role = 'bill'
+                  AND b.category = 'food'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM claim_uploads r
+                      WHERE r.claim_id = b.claim_id
+                        AND r.day_number = b.day_number
+                        AND r.category = 'food'
+                        AND (r.file_role IS NULL OR r.file_role = 'receipt')
+                  )
+            """),
+            {"claim_id": claim_id}
+        ).mappings().all()
+
+        for bill in unmatched_food_bills:
+            verdict = {
+                **_empty_verdict(),
+                "status": "REJECTED",
+                "rejection_reason": f"Missing mandatory food receipt for day {bill['day_number']}."
+            }
+            _write_upload_verdict(bill["upload_id"], verdict, db)
+
+        # 4c. Fetch only PENDING primary uploads (receipts or null file_role)
         uploads = db.execute(
             text("""
                 SELECT upload_id, claim_id, day_number, claim_date, category,
@@ -74,13 +124,14 @@ def run_claim_validation(claim_id: int) -> None:
                 FROM claim_uploads
                 WHERE claim_id = :claim_id
                   AND status = 'PENDING'
+                  AND (file_role IS NULL OR file_role = 'receipt')
                 ORDER BY upload_id ASC
             """),
             {"claim_id": claim_id}
         ).mappings().all()
 
         if not uploads:
-            logger.warning(f"[Validator] No PENDING uploads for claim_id={claim_id}")
+            logger.warning(f"[Validator] No PENDING primary uploads for claim_id={claim_id}")
             _update_claim_status(claim_id, "APPROVED", db)
             db.commit()
             return
@@ -88,28 +139,42 @@ def run_claim_validation(claim_id: int) -> None:
         # 5. Running daily totals
         daily_totals: dict[int, dict[str, float]] = defaultdict(lambda: defaultdict(float))
 
-        # 6. Per-upload processing loop
+        # 6. Per-upload processing loop (Receipts only)
         for upload in uploads:
             logger.info(
                 f"[Validator] Processing upload_id={upload['upload_id']} day={upload['day_number']} cat={upload['category']}"
             )
             try:
-                verdict = _process_single_upload(
+                # _process_single_upload now returns receipt_verdict, paired_bill_upload_id, and paired_bill_verdict
+                verdict, bill_upload_id, bill_verdict = _process_single_upload(
                     upload=upload,
                     policy_daily_limits=policy_daily_limits,
                     disallowed_items=disallowed_items,
                     daily_totals=daily_totals,
-                    db = db,
+                    db=db,
                 )
             except Exception as e:
                 logger.exception(f"[Validator] Unexpected error on upload_id={upload['upload_id']}: {e}")
                 verdict = _error_verdict(f"Internal processing error: {e}")
+                bill_upload_id, bill_verdict = None, None
 
+            # Write receipt verdict
             _write_upload_verdict(upload["upload_id"], verdict, db)
+
+            # Mirror the receipt status to the paired bill to keep status sync clean
+            if bill_upload_id and bill_verdict:
+                if verdict["status"] == "REJECTED":
+                    bill_verdict["status"] = "REJECTED"
+                    bill_verdict["rejection_reason"] = f"Associated receipt was rejected: {verdict.get('rejection_reason')}"
+                elif verdict["status"] == "REVIEW":
+                    bill_verdict["status"] = "REVIEW"
+                    bill_verdict["review_reason"] = f"Associated receipt was flagged for review: {verdict.get('review_reason')}"
+                
+                _write_upload_verdict(bill_upload_id, bill_verdict, db)
 
         # 7. Roll up status and commit final validation results
         _rollup_claim_status(claim_id, db)
-        db.commit() # Commit all receipt verdicts and final claim rollup
+        db.commit() # Commit all receipt/bill verdicts and final claim rollup
         logger.info(f"[Validator] Validation complete for claim_id={claim_id}")
 
     except Exception as e:
@@ -119,7 +184,7 @@ def run_claim_validation(claim_id: int) -> None:
         db.close()
 
 # ---------------------------------------------------------------------------
-# Single-upload processor
+# Single-upload processor (Processes primary receipt and returns paired bill data if matched)
 # ---------------------------------------------------------------------------
 
 def _process_single_upload(
@@ -128,7 +193,7 @@ def _process_single_upload(
     disallowed_items: dict,
     daily_totals: dict,
     db: Session,
-) -> dict:
+) -> tuple[dict, int | None, dict | None]:
 
     category = upload["category"].strip().lower()
     file_url = upload["file_url"]
@@ -138,6 +203,10 @@ def _process_single_upload(
 
     base = _empty_verdict()
     base["ocr_invoice_number"] = None
+
+    bill_upload_id = None
+    bill_verdict = None
+
     # ---------------------------------------------------------
     # Step 1: Download receipt
     # ---------------------------------------------------------
@@ -146,11 +215,15 @@ def _process_single_upload(
         resp.raise_for_status()
         file_bytes = resp.content
     except Exception as e:
-        return {
-            **base,
-            "status": "REVIEW",
-            "review_reason": f"Could not download file: {e}",
-        }
+        return (
+            {
+                **base,
+                "status": "REVIEW",
+                "review_reason": f"Could not download file: {e}",
+            },
+            None,
+            None
+        )
 
     # ---------------------------------------------------------
     # Step 2: OCR + LLM Extraction
@@ -159,11 +232,15 @@ def _process_single_upload(
         ocr = extract_ocr_data(file_bytes)
     except Exception as e:
         logger.info(f"[Validator] ocr failed")
-        return {
-            **base,
-            "status": "REVIEW",
-            "review_reason": f"OCR failed: {e}",
-        }
+        return (
+            {
+                **base,
+                "status": "REVIEW",
+                "review_reason": f"OCR failed: {e}",
+            },
+            None,
+            None
+        )
 
     logger.info(f"[Validator] OCR Result: {ocr}")
     logger.info(
@@ -207,11 +284,15 @@ def _process_single_upload(
         ).mappings().first()
 
     if same_claim_duplicate:
-        return {
-            **base,
-            "status": "REJECTED",
-            "rejection_reason": f"Duplicate receipt detected within the same claim submission (Invoice #{invoice_num}).",
-        }
+        return (
+            {
+                **base,
+                "status": "REJECTED",
+                "rejection_reason": f"Duplicate receipt detected within the same claim submission (Invoice #{invoice_num}).",
+            },
+            None,
+            None
+        )
     if invoice_num:
         # Search for any previous upload with the same invoice number (excluding current upload_id)
         duplicate = db.execute(
@@ -229,42 +310,62 @@ def _process_single_upload(
         ).mappings().first()
 
         if duplicate:
-            return {
-                **base,
-                "status": "REJECTED",
-                "rejection_reason": f"Duplicate receipt detected. This invoice/receipt number ({invoice_num}) has already been submitted and approved or is currently flagged for review.",
-            }
+            return (
+                {
+                    **base,
+                    "status": "REJECTED",
+                    "rejection_reason": f"Duplicate receipt detected. This invoice/receipt number ({invoice_num}) has already been submitted and approved or is currently flagged for review.",
+                },
+                None,
+                None
+            )
     # ---------------------------------------------------------
     # Step 3: OCR sanity checks
     # ---------------------------------------------------------
 
     if ocr.get("confidence") == "low":
-        return {
-            **base,
-            "status": "REVIEW",
-            "review_reason": "OCR confidence too low.",
-        }
+        return (
+            {
+                **base,
+                "status": "REVIEW",
+                "review_reason": "OCR confidence too low.",
+            },
+            None,
+            None
+        )
     
     if ocr.get("invoice_number") is None:
-        return {
-            **base,
-            "status": "REVIEW",
-            "review_reason": "Could not extract receipt invoice number.",
-        }
+        return (
+            {
+                **base,
+                "status": "REVIEW",
+                "review_reason": "Could not extract receipt invoice number.",
+            },
+            None,
+            None
+        )
     
     if ocr.get("ocr_date") is None:
-        return {
-            **base,
-            "status": "REVIEW",
-            "review_reason": "Could not extract receipt date.",
-        }
+        return (
+            {
+                **base,
+                "status": "REVIEW",
+                "review_reason": "Could not extract receipt date.",
+            },
+            None,
+            None
+        )
 
     if ocr.get("amount") is None:
-        return {
-            **base,
-            "status": "REVIEW",
-            "review_reason": "Could not extract receipt amount.",
-        }
+        return (
+            {
+                **base,
+                "status": "REVIEW",
+                "review_reason": "Could not extract receipt amount.",
+            },
+            None,
+            None
+        )
     try:
         receipt_date = ocr.get("ocr_date")
         claim_date = upload.get("claim_date")
@@ -277,20 +378,28 @@ def _process_single_upload(
             claim_date = claim_date.split("T")[0]
 
         if receipt_date != claim_date:
-            return {
-                **base,
-                "status": "REJECTED",
-                "rejection_reason": (
-                    f"Receipt date ({receipt_date}) does not match claim date ({claim_date})."
-                ),
-            }
+            return (
+                {
+                    **base,
+                    "status": "REJECTED",
+                    "rejection_reason": (
+                        f"Receipt date ({receipt_date}) does not match claim date ({claim_date})."
+                    ),
+                },
+                None,
+                None
+            )
 
     except Exception as e:
-        return {
-        **base,
-        "status": "REVIEW",
-        "review_reason": f"Date validation error: {e}",
-        }
+        return (
+            {
+                **base,
+                "status": "REVIEW",
+                "review_reason": f"Date validation error: {e}",
+            },
+            None,
+            None
+        )
 
     # ---------------------------------------------------------
     # Step 4: Document type validation
@@ -299,11 +408,15 @@ def _process_single_upload(
     if category == "food" and file_role == "receipt":
         # Check if mandatory slot is actually a receipt
         if doc_type != "receipt":
-            return {
-                **base,
-                "status": "REJECTED",
-                "rejection_reason": f"Mandatory food slot must contain a valid receipt. Detected document type was '{doc_type}'.",
-            }
+            return (
+                {
+                    **base,
+                    "status": "REJECTED",
+                    "rejection_reason": f"Mandatory food slot must contain a valid receipt. Detected document type was '{doc_type}'.",
+                },
+                None,
+                None
+            )
     NON_REIMBURSABLE_DOCS = {
         "flight_ticket",
         "hotel_booking_confirmation",
@@ -311,72 +424,123 @@ def _process_single_upload(
     }
 
     if doc_type in NON_REIMBURSABLE_DOCS:
-        return {
-            **base,
-            "status": "REJECTED",
-            "rejection_reason":
-                f"{doc_type.replace('_',' ').title()} is company-arranged and not reimbursable.",
-        }
+        return (
+            {
+                **base,
+                "status": "REJECTED",
+                "rejection_reason":
+                    f"{doc_type.replace('_',' ').title()} is company-arranged and not reimbursable.",
+            },
+            None,
+            None
+        )
 
     if doc_type == "unknown":
-        return {
-            **base,
-            "status": "REVIEW",
-            "review_reason": "Unknown document type.",
-        }
+        return (
+            {
+                **base,
+                "status": "REVIEW",
+                "review_reason": "Unknown document type.",
+            },
+            None,
+            None
+        )
     
+    # ---------------------------------------------------------
+    # Step 4.5: Food optional Bill Lookup & Comparison
+    # ---------------------------------------------------------
     if category == "food":
-        paired_role = "bill" if file_role == "receipt" else "receipt"
-        
-        # Look for the other matching role for the same day on this claim
-        paired_upload = db.execute(
+        # Look for the optional bill for the same day on this claim
+        paired_bill = db.execute(
             text("""
-                SELECT upload_id, status, ocr_merchant, ocr_date, ocr_amount
+                SELECT upload_id, file_url, status
                 FROM claim_uploads
                 WHERE claim_id = :claim_id
                   AND day_number = :day_number
                   AND category = 'food'
-                  AND upload_id != :current_upload_id
-                  AND file_role = :paired_role
+                  AND file_role = 'bill'
+                  AND status = 'PENDING'
                 LIMIT 1
             """),
             {
                 "claim_id": upload["claim_id"],
                 "day_number": day_number,
-                "current_upload_id": upload["upload_id"],
-                "paired_role": paired_role
             }
         ).mappings().first()
 
-        # If the other file exists and has completed validation
-        if paired_upload and paired_upload["status"] not in ("PENDING", "SYSTEM_PENDING"):
+        # If the other file exists and is pending, process it
+        if paired_bill:
+            bill_upload_id = paired_bill["upload_id"]
             
+            # Download and OCR the paired bill
+            try:
+                bill_resp = requests.get(paired_bill["file_url"], timeout=15)
+                bill_resp.raise_for_status()
+                bill_bytes = bill_resp.content
+            except Exception as e:
+                bill_verdict = {**_empty_verdict(), "status": "REVIEW", "review_reason": f"Could not download bill: {e}"}
+                return (
+                    {**base, "status": "REVIEW", "review_reason": f"Could not download optional paired bill: {e}"},
+                    bill_upload_id,
+                    bill_verdict
+                )
+
+            try:
+                bill_ocr = extract_ocr_data(bill_bytes)
+            except Exception as e:
+                bill_verdict = {**_empty_verdict(), "status": "REVIEW", "review_reason": f"OCR failed on bill: {e}"}
+                return (
+                    {**base, "status": "REVIEW", "review_reason": f"OCR failed on optional paired bill: {e}"},
+                    bill_upload_id,
+                    bill_verdict
+                )
+
+            # Build bill verdict dictionary
+            bill_verdict = {
+                **_empty_verdict(),
+                "ocr_raw_text": bill_ocr.get("ocr_raw_text"),
+                "ocr_merchant": bill_ocr.get("merchant"),
+                "ocr_date": bill_ocr.get("ocr_date"),
+                "ocr_amount": bill_ocr.get("amount"),
+                "ocr_currency": bill_ocr.get("currency", "INR"),
+                "ocr_confidence": bill_ocr.get("confidence"),
+                "expense_summary": bill_ocr.get("expense_summary"),
+                "detected_doc_type": bill_ocr.get("detected_doc_type"),
+                "ocr_invoice_number": bill_ocr.get("invoice_number"),
+            }
+
             # Compare basic properties
             curr_merchant = (ocr.get("merchant") or "").strip().lower()
-            pair_merchant = (paired_upload["ocr_merchant"] or "").strip().lower()
-            merchant_match = curr_merchant == pair_merchant or curr_merchant in pair_merchant or pair_merchant in curr_merchant
+            bill_merchant = (bill_ocr.get("merchant") or "").strip().lower()
+            merchant_match = curr_merchant == bill_merchant or curr_merchant in bill_merchant or bill_merchant in curr_merchant
 
-            curr_date = str(ocr.get("ocr_date") or "")
-            pair_date = str(paired_upload["ocr_date"] or "")
-            date_match = curr_date == pair_date
+            curr_date = str(ocr.get("ocr_date") or "").split("T")[0]
+            bill_date = str(bill_ocr.get("ocr_date") or "").split("T")[0]
+            date_match = curr_date == bill_date
 
             curr_amount = ocr.get("amount")
-            pair_amount = paired_upload["ocr_amount"]
+            bill_amount = bill_ocr.get("amount")
             amount_match = False
-            if curr_amount is not None and pair_amount is not None:
-                amount_match = abs(float(curr_amount) - float(pair_amount)) < 0.01
+            if curr_amount is not None and bill_amount is not None:
+                amount_match = abs(float(curr_amount) - float(bill_amount)) < 0.01
 
-            # If there's a discrepancy, flag for manual review
+            # If there's a discrepancy, flag both for review
             if not (merchant_match and date_match and amount_match):
-                return {
-                    **base,
-                    "status": "REVIEW",
-                    "review_reason": (
-                        f"Discrepancy detected between Food receipt and optional bill. "
-                        f"Receipt: Merchant='{ocr.get('merchant')}', Date={ocr.get('ocr_date')}, Amount={ocr.get('amount')}. "
-                        f"Bill: Merchant='{paired_upload['ocr_merchant']}', Date={paired_upload['ocr_date']}, Amount={paired_upload['ocr_amount']}."
-                    ),
-                }
+                discrepancy_reason = (
+                    f"Discrepancy detected between Food receipt and optional bill. "
+                    f"Receipt: Merchant='{ocr.get('merchant')}', Date={ocr.get('ocr_date')}, Amount={ocr.get('amount')}. "
+                    f"Bill: Merchant='{bill_ocr.get('merchant')}', Date={bill_ocr.get('ocr_date')}, Amount={bill_ocr.get('amount')}."
+                )
+                bill_verdict["status"] = "REVIEW"
+                bill_verdict["review_reason"] = discrepancy_reason
+                
+                return (
+                    {**base, "status": "REVIEW", "review_reason": discrepancy_reason},
+                    bill_upload_id,
+                    bill_verdict
+                )
+            else:
+                bill_verdict["status"] = "APPROVED"
 
     # ---------------------------------------------------------
     # Step 5: Expense categorization
@@ -388,23 +552,26 @@ def _process_single_upload(
     )
 
     if inferred == "non-reimbursable":
-        return {
-            **base,
-            "status": "REJECTED",
-            "rejection_reason": "Expense is non-reimbursable.",
-        }
+        return (
+            {**base, "status": "REJECTED", "rejection_reason": "Expense is non-reimbursable."},
+            bill_upload_id,
+            bill_verdict
+        )
 
     if not inferred_matches_uploaded(inferred, category):
         from app.services.expense_categorizer import CATEGORY_MAP
 
         inferred_display = CATEGORY_MAP.get(inferred, inferred)
 
-        return {
-            **base,
-            "status": "REJECTED",
-            "rejection_reason":
-                f"Uploaded as '{category}' but appears to be '{inferred_display}'.",
-        }
+        return (
+            {
+                **base,
+                "status": "REJECTED",
+                "rejection_reason": f"Uploaded as '{category}' but appears to be '{inferred_display}'.",
+            },
+            bill_upload_id,
+            bill_verdict
+        )
 
     # ---------------------------------------------------------
     # Step 6: Misc description validation
@@ -412,24 +579,22 @@ def _process_single_upload(
     if category == "misc":
 
         if len(description.strip()) < 5:
-            return {
-                **base,
-                "status": "REVIEW",
-                "review_reason":
-                    "Miscellaneous expenses require a description.",
-            }
+            return (
+                {**base, "status": "REVIEW", "review_reason": "Miscellaneous expenses require a description."},
+                bill_upload_id,
+                bill_verdict
+            )
 
         if not description_matches_receipt(
             user_description=description,
             expense_summary=ocr.get("expense_summary", ""),
             line_items=ocr.get("line_items", []),
         ):
-            return {
-                **base,
-                "status": "REJECTED",
-                "rejection_reason":
-                    "Description does not match the uploaded receipt.",
-            }
+            return (
+                {**base, "status": "REJECTED", "rejection_reason": "Description does not match the uploaded receipt."},
+                bill_upload_id,
+                bill_verdict
+            )
 
     # ---------------------------------------------------------
     # Step 7: Policy disallowed items
@@ -444,12 +609,11 @@ def _process_single_upload(
 
                 if banned in item:
 
-                    return {
-                        **base,
-                        "status": "REJECTED",
-                        "rejection_reason":
-                            f"'{item}' is not reimbursable under policy.",
-                    }
+                    return (
+                        {**base, "status": "REJECTED", "rejection_reason": f"'{item}' is not reimbursable under policy."},
+                        bill_upload_id,
+                        bill_verdict
+                    )
 
     # ---------------------------------------------------------
     # Step 8: Currency conversion
@@ -476,19 +640,24 @@ def _process_single_upload(
 
         status = "REVIEW" if result.get("needs_review") else "REJECTED"
 
-        return {
-            **base,
-            "status": status,
-            "review_reason" if status == "REVIEW" else "rejection_reason": result["reason"],
-        }
+        return (
+            {
+                **base,
+                "status": status,
+                "review_reason" if status == "REVIEW" else "rejection_reason": result["reason"],
+            },
+            bill_upload_id,
+            bill_verdict
+        )
 
     # ---------------------------------------------------------
     # Step 10: Approved
     # ---------------------------------------------------------
-    return {
-        **base,
-        "status": "APPROVED",
-    }
+    return (
+        {**base, "status": "APPROVED"},
+        bill_upload_id,
+        bill_verdict
+    )
 
 # ---------------------------------------------------------------------------
 # DB write helpers

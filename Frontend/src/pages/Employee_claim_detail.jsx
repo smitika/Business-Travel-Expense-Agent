@@ -169,6 +169,13 @@ export default function ClaimDetailsPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-xs text-slate-400">My Claims / Claim #{claim_id}</div>
+              <button onClick={()=>navigate("/employee-dashboard/my-claims")}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back
+              </button>
               <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
                 Claim #{claim_id}
               </h1>

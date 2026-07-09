@@ -1,11 +1,12 @@
-import {useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { admin_login } from "../api/client";
 import { Eye, EyeOff } from "lucide-react";
+
 export default function AdminLogin() {
     const navigate = useNavigate();
     const [adminID, setadminID] = useState("");
-    const [adminpwd, setadminpwd] =useState("");
+    const [adminpwd, setadminpwd] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -38,6 +39,13 @@ export default function AdminLogin() {
       }
     };
 
+    // Trigger handleClick when user presses the Enter key
+    const handleKeyDown = (e) => {
+      if (e.key === "Enter" && !loading) {
+        handleClick();
+      }
+    };
+
   return (
     <div className="h-screen bg-[#F1F5F9] text-gray-800 flex items-center justify-center px-6">
 
@@ -63,8 +71,9 @@ export default function AdminLogin() {
         </label>
 
         <input
-          value = {adminID}
-          onChange={(e)=>setadminID(e.target.value)}
+          value={adminID}
+          onChange={(e) => setadminID(e.target.value)}
+          onKeyDown={handleKeyDown}
           type="text"
           placeholder="Enter your admin ID"
           className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 transition"
@@ -75,10 +84,11 @@ export default function AdminLogin() {
         <label className="block text-sm text-gray-600 mb-2">
           Password
         </label>
-        <div className ="relative">
+        <div className="relative">
         <input
-          value = {adminpwd}
-          onChange={(e)=>setadminpwd(e.target.value)}
+          value={adminpwd}
+          onChange={(e) => setadminpwd(e.target.value)}
+          onKeyDown={handleKeyDown}
           type={showPassword ? "text" : "password"}
           placeholder="Enter your password"
           className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 transition"
@@ -92,6 +102,12 @@ export default function AdminLogin() {
         </button>
         </div>
       </div>
+
+      {error && (
+        <div className="text-red-500 text-sm mt-2 font-medium">
+          {error}
+        </div>
+      )}
 
       <button
           onClick={handleClick}
@@ -136,7 +152,7 @@ export default function AdminLogin() {
             "Login"
           )}
       </button>
-      <button onClick={()=> navigate("/")}
+      <button onClick={() => navigate("/")}
         className="w-full py-3 rounded bg-white border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 active:scale-[0.98]"
       >
         Back to Home

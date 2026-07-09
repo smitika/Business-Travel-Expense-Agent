@@ -157,8 +157,7 @@ export default function DayDetailsPage() {
             onClick={() => navigate(`/employee-dashboard/my-claims/${claimId}`)}
             className="group inline-flex items-center gap-2 bg-transparent border-none text-sm font-semibold text-slate-500 hover:text-slate-900 cursor-pointer transition-colors duration-150"
           >
-            <span className="text-base group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span>
-            Back to Claim Details
+          Back
           </button>
           <span className="text-xs font-medium text-slate-400">
             Claim #{claimId} / Day {dayNumber}

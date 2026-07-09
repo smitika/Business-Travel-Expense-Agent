@@ -17,7 +17,7 @@ export default function EmployeeLogin() {
             setLoading(true);
             setError("");
 
-            const res = await employee_login({emp_id: empId,password: password});
+            const res = await employee_login({ emp_id: empId, password: password });
 
             localStorage.setItem("token", res.access_token);
             localStorage.setItem("role", "employee");
@@ -33,7 +33,14 @@ export default function EmployeeLogin() {
         } finally {
             setLoading(false);
         }
-};
+    };
+
+    // Trigger handleClick when user presses the Enter key
+    const handleKeyDown = (e) => {
+        if (e.key === "Enter" && !loading) {
+            handleClick();
+        }
+    };
 
     return (
         <div className="h-screen bg-[#F1F5F9] text-gray-800 flex items-center justify-center px-6">
@@ -62,6 +69,7 @@ export default function EmployeeLogin() {
                         <input
                             value={empId}
                             onChange={(e) => setEmpId(e.target.value)}
+                            onKeyDown={handleKeyDown}
                             type="text"
                             placeholder="Enter your employee ID"
                             className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 transition"
@@ -76,6 +84,7 @@ export default function EmployeeLogin() {
                         <input
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            onKeyDown={handleKeyDown}
                             type={showPassword ? "text" : "password"}
                             placeholder="Enter your password"
                             className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 outline-none focus:border-blue-500 transition"
@@ -89,6 +98,12 @@ export default function EmployeeLogin() {
                         </button>
                         </div>
                     </div>
+
+                    {error && (
+                        <div className="text-red-500 text-sm mt-2 font-medium">
+                            {error}
+                        </div>
+                    )}
 
                     <button
                         onClick={handleClick}

@@ -307,7 +307,7 @@ export default function MyClaims() {
                     onClick={() => navigate(`/employee-dashboard/my-claims/${claim.claim_id}`)}
                     className={`flex items-center gap-1 px-4 py-2 rounded-lg border text-sm font-semibold text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 w-full sm:w-auto justify-center ${
                       isBlocked 
-                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
+                        ? 'bg-gray-100 text-gray-700 border-gray-200 cursor-not-allowed' 
                         : "bg-slate-900 hover:bg-slate-700 focus-visible:outline-slate-900"
                     }`}
                   >
